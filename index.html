@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transposeur de recettes → Mealie</title>
+<style>
+:root{
+  --bg:#f5efe3; --card:#fffdf8; --ink:#2a2723; --muted:#756d62; --line:#e0d6c4;
+  --accent:#c2412a; --accent-ink:#fff; --ok:#3d6b49; --warn:#9a6a00; --sel:rgba(194,65,42,.18);
+  --radius:12px; --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#1b1916;--card:#25221e;--ink:#efe8db;--muted:#a79d8e;--line:#3a352e;--accent:#e2674f;--accent-ink:#1b1916;--ok:#7fbf8f;--warn:#e0b354;--sel:rgba(226,103,79,.25)}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--sans)}
+header{padding:18px 16px 6px;max-width:1400px;margin:0 auto}
+header h1{font:700 1.55rem/1.15 var(--serif);margin:0;letter-spacing:-.01em}
+header h1 span{color:var(--accent)}
+header p{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+main{display:grid;gap:14px;padding:12px 16px 60px;max-width:1400px;margin:0 auto}
+@media (min-width:1000px){
+  main{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+}
+.col{display:grid;gap:14px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;min-width:0}
+.card h2{font:700 1.1rem var(--serif);margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.card h2 i{font:700 .75rem var(--sans);background:var(--accent);color:var(--accent-ink);width:22px;height:22px;border-radius:50%;display:inline-grid;place-items:center;font-style:normal}
+label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin:10px 0 3px}
+input[type=text],input[type=url],input[type=password],input[type=number],select,textarea{
+  width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+textarea{resize:vertical;min-height:70px;line-height:1.4;field-sizing:content}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button,.btn{font:600 .92rem var(--sans);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:9px 13px;cursor:pointer;min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row > .grow{flex:1;min-width:120px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#drop{border:2px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--muted)}
+#drop.over{border-color:var(--accent);background:var(--sel)}
+#drop .row{justify-content:center;margin-top:8px}
+#viewer{margin-top:10px;overflow:auto;max-height:68vh;border:1px solid var(--line);border-radius:8px;background:#8881;display:none}
+#stage{position:relative;line-height:0}
+#stage canvas{width:100%;height:auto;display:block}
+#stage.zoning canvas{touch-action:none;cursor:crosshair}
+#sel{position:absolute;border:2px solid var(--accent);background:var(--sel);display:none;pointer-events:none}
+#pagebar{display:none;margin-top:10px}
+#pagebar input{width:64px;text-align:center}
+#prog,#b-prog{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:10px;display:none}
+#prog b,#b-prog b{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.msg{font-size:.85rem;margin-top:8px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.ok{color:var(--ok)} .msg.err{color:var(--accent)} .msg.warn{color:var(--warn)}
+details{margin-top:10px} summary{cursor:pointer;font-weight:600;font-size:.88rem;color:var(--muted)}
+.hint{font-size:.78rem;color:var(--muted);margin-top:3px}
+#photo-prev{max-height:70px;border-radius:6px;display:none}
+pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font:.75rem/1.4 ui-monospace,Menlo,Consolas,monospace;max-height:260px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0}
+.check{display:flex;gap:8px;align-items:center;font-size:.85rem;color:var(--muted);margin-top:8px;font-weight:400}
+.check input{width:18px;height:18px}
+#b-list{margin-top:10px;max-height:420px;overflow:auto;border-top:1px solid var(--line)}
+#b-list:empty{display:none}
+.brow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.brow input{width:20px;height:20px;flex:none}
+.brow button{flex:1;min-width:0;text-align:left;justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:0;padding:6px 10px;border-color:transparent;background:none}
+.brow button.cur{border-color:var(--accent)}
+.brow button b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.brow button small{color:var(--muted);font-weight:400}
+.brow .st{flex:none;font-size:.8rem;max-width:38%;text-align:right;overflow-wrap:anywhere}
+.st.ok{color:var(--ok)} .st.err{color:var(--accent)} .st.warn{color:var(--warn)}
+#edit-tag{font:600 .75rem var(--sans);color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Transposeur de recettes <span>→ Mealie</span></h1>
+  <p>PDF, EPUB, numérisation ou photo → texte → recette structurée → import dans Mealie. Tout se passe dans votre navigateur.</p>
+</header>
+
+<main>
+  <div class="col">
+    <section class="card" id="src-card">
+      <h2><i>1</i> Source</h2>
+      <div id="drop">
+        Déposez un PDF, un EPUB ou une image ici, ou collez une image (Ctrl+V)
+        <div class="row">
+          <label class="btn" style="margin:0;color:var(--ink)">Choisir un fichier<input id="file" type="file" accept="application/pdf,application/epub+zip,.epub,image/*" hidden></label>
+          <label class="btn" style="margin:0;color:var(--ink)">Prendre une photo<input id="cam" type="file" accept="image/*" capture="environment" hidden></label>
+        </div>
+      </div>
+
+      <div id="pagebar" class="row">
+        <span id="pdfnav" class="row">
+          <button id="prev" aria-label="Page précédente">◀</button>
+          <input id="pnum" type="number" min="1" value="1" aria-label="Page">
+          <span id="pcount" class="hint"></span>
+          <button id="next" aria-label="Page suivante">▶</button>
+        </span>
+        <button id="rot" title="Pivoter de 90°">⟳ Pivoter</button>
+        <button id="zone" title="Tracer un rectangle sur la page">▭ Zone</button>
+        <button id="zclear" disabled>Effacer la zone</button>
+      </div>
+
+      <div id="viewer"><div id="stage"><canvas id="cv"></canvas><div id="sel"></div></div></div>
+
+      <div class="row" style="margin-top:10px">
+        <div class="grow"><label for="dest">Envoyer le texte vers</label>
+          <select id="dest">
+            <option value="auto">Recette complète (analyse auto)</option>
+            <option value="name">Titre</option>
+            <option value="ing">Ingrédients (ajouter)</option>
+            <option value="steps">Étapes (ajouter)</option>
+            <option value="notes">Notes (ajouter)</option>
+            <option value="desc">Description</option>
+          </select></div>
+        <div class="grow"><label for="method">Méthode</label>
+          <select id="method">
+            <option value="auto">Auto</option>
+            <option value="layer">Texte intégré au PDF</option>
+            <option value="ocr">OCR (Tesseract)</option>
+          </select></div>
+        <div class="grow"><label for="lang">Langue OCR</label>
+          <select id="lang"><option value="fra">Français</option><option value="fra+eng">Français + anglais</option><option value="eng">Anglais</option></select></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="extract" class="primary grow" disabled>Extraire la page</button>
+      </div>
+      <div id="prog"><b></b></div>
+      <div id="src-msg" class="msg"></div>
+
+      <details id="raw-d">
+        <summary>Texte brut (modifiable — ou collez ici un texte déjà océrisé)</summary>
+        <textarea id="raw" rows="8" spellcheck="false" placeholder="Collez ici le texte d’une recette…"></textarea>
+        <div class="row" style="margin-top:8px"><button id="reparse">Analyser ce texte</button></div>
+      </details>
+    </section>
+
+    <section class="card" id="batch-card">
+      <h2><i>L</i> Lot — livre entier</h2>
+      <label for="b-book">Nom du livre <span style="font-weight:400">(ajouté comme étiquette et comme source)</span></label>
+      <input id="b-book" type="text" placeholder="Titre du livre de recettes">
+      <div class="grid2">
+        <div><label for="b-from">De la page</label><input id="b-from" type="number" min="1"></div>
+        <div><label for="b-to">À la page</label><input id="b-to" type="number" min="1"></div>
+      </div>
+      <label class="check"><input id="t-use" type="checkbox" checked> Se fier à la table des matières (ou à l’index des recettes) pour choisir les recettes et leurs titres</label>
+      <div id="t-box">
+        <div class="grid3">
+          <div><label for="t-from">Table : de la page</label><input id="t-from" type="number" min="1"></div>
+          <div><label for="t-to">à la page</label><input id="t-to" type="number" min="1"></div>
+          <div><label for="t-off">Décalage</label><input id="t-off" type="number" placeholder="auto"></div>
+        </div>
+        <div class="hint">Décalage = page du PDF − numéro imprimé. Laissez vide pour le calcul automatique.</div>
+        <div class="row" style="margin-top:8px"><button id="t-find" disabled>Détecter la table</button></div>
+      </div>
+      <div id="t-msg" class="msg"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="b-scan" class="primary grow" disabled>Analyser le livre</button>
+        <button id="b-stop" style="display:none">Arrêter</button>
+      </div>
+      <div id="b-prog"><b></b></div>
+      <div id="b-msg" class="msg">Chargez un PDF ou un EPUB, puis analysez tout le livre d’un coup.</div>
+      <div id="ph-msg" class="msg"></div>
+      <div id="b-list"></div>
+      <div id="b-actions" class="row" style="display:none;margin-top:10px">
+        <button id="b-send" class="primary grow">Envoyer dans Mealie</button>
+        <button id="b-all">Tout cocher / décocher</button>
+        <button id="b-dl">Télécharger le lot (.json)</button>
+        <button id="b-again">Renvoyer celles déjà envoyées</button>
+        <button id="b-clear">Vider la liste</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card" id="rec-card">
+      <h2><i>2</i> Recette <span id="edit-tag"></span><span style="flex:1"></span><button id="reset" style="min-height:34px;padding:5px 10px;font-size:.8rem">Nouvelle recette</button></h2>
+      <label for="f-name">Titre</label><input id="f-name" type="text" data-f>
+      <label for="f-desc">Description</label><textarea id="f-desc" rows="2" data-f></textarea>
+      <div class="grid2">
+        <div><label for="f-yield">Portions</label><input id="f-yield" type="text" placeholder="4 personnes" data-f></div>
+        <div><label for="f-total">Temps total</label><input id="f-total" type="text" placeholder="40 min" data-f></div>
+        <div><label for="f-prep">Préparation</label><input id="f-prep" type="text" placeholder="15 min" data-f></div>
+        <div><label for="f-cook">Cuisson</label><input id="f-cook" type="text" placeholder="25 min" data-f></div>
+      </div>
+      <label for="f-ing">Ingrédients — un par ligne <span style="font-weight:400">(« # Titre » = sous-section)</span></label>
+      <textarea id="f-ing" rows="7" data-f></textarea>
+      <div id="fix-msg" class="msg warn" style="display:none"></div>
+      <label class="check"><input id="autofix" type="checkbox" checked> Corriger les fractions perdues à l’OCR d’après les ml (125 ml → ½ tasse)</label>
+      <label for="f-steps">Étapes — une par ligne <span style="font-weight:400">(« # Titre » = sous-section)</span></label>
+      <textarea id="f-steps" rows="8" data-f></textarea>
+      <label for="f-notes">Notes (variantes, trucs)</label><textarea id="f-notes" rows="2" data-f></textarea>
+      <div class="grid2">
+        <div><label for="f-cats">Catégories (virgules)</label><input id="f-cats" type="text" placeholder="Plat principal" data-f></div>
+        <div><label for="f-tags">Étiquettes (virgules)</label><input id="f-tags" type="text" placeholder="riz, four" data-f></div>
+      </div>
+      <label for="f-source">Source</label><input id="f-source" type="text" placeholder="Titre du livre, p. 31" data-f>
+      <div class="row" style="margin-top:10px">
+        <button id="photo-btn" disabled>Utiliser la zone/page comme photo</button>
+        <img id="photo-prev" alt="Photo de la recette">
+        <button id="photo-x" style="display:none">Retirer</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><i>3</i> Mealie</h2>
+      <label for="m-url" id="m-url-lab">Adresse du serveur</label><input id="m-url" type="url" placeholder="https://mealie.exemple.com" autocomplete="off">
+      <label for="m-token">Jeton API <span style="font-weight:400">(Mealie → Profil → Jetons API)</span></label><div class="row"><input id="m-token" type="password" autocomplete="off" class="grow" style="width:auto"><button id="m-show" type="button" aria-pressed="false">Afficher</button></div>
+      <label class="check"><input id="m-save" type="checkbox"> Mémoriser sur cet appareil</label>
+      <label for="m-dup">Si la recette est déjà dans Mealie</label>
+      <select id="m-dup">
+        <option value="update">La mettre à jour (contenu, photo, pièces jointes) — pas de doublon</option>
+        <option value="skip">Ne rien faire (l’ignorer)</option>
+        <option value="new">Créer une copie quand même</option>
+      </select>
+      <label class="check"><input id="m-homo" type="checkbox" checked> Si une recette différente porte déjà ce nom, ajouter la source au titre (ex. « Gaspacho (Nom du livre) »)</label>
+      <label class="check"><input id="m-img" type="checkbox" checked> Utiliser la photo du livre (page photo voisine) comme image de la recette</label>
+      <label for="m-att">Pièces jointes à la recette <span style="font-weight:400">(image de la source, pour vérifier plus tard)</span></label>
+      <select id="m-att">
+        <option value="near">Page de la recette + pages voisines sans recette (photo, encadrés)</option>
+        <option value="page">Page de la recette seulement</option>
+        <option value="none">Aucune</option>
+      </select>
+      <div class="row" style="margin-top:10px">
+        <button id="send" class="primary grow">Envoyer dans Mealie</button>
+        <button id="test">Tester</button>
+      </div>
+      <div id="m-msg" class="msg"></div>
+      <details open>
+        <summary>Import manuel (JSON schema.org)</summary>
+        <div class="row" style="margin-top:8px">
+          <button id="copy">Copier le JSON</button>
+          <button id="dl">Télécharger .json</button>
+        </div>
+        <div class="hint">Dans Mealie : Créer une recette → Importer → « HTML ou JSON », puis collez.</div>
+        <pre id="json"></pre>
+      </details>
+    </section>
+  </div>
+</main>
+
+<!-- ===================== Analyse du texte (aucune dépendance au DOM) ===================== -->
+<script id="parser-js">
+(function(root){
+'use strict';
+const UP='A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇŒ';
+const CUP_REM={30:'⅛',60:'¼',65:'¼',80:'⅓',85:'⅓',125:'½',160:'⅔',165:'⅔',170:'⅔',175:'¾',180:'¾',185:'¾',190:'¾'};
+function cupQty(ml){const w=Math.floor(ml/250),r=Math.round(ml-250*w);if(r===0)return w?String(w):null;const f=CUP_REM[r];return f?(w?w+' ':'')+f:null;}
+function spoonQty(ml,per){const x=ml/per,w=Math.floor(x+1e-6),r=x-w;if(r<.03)return w?String(w):null;
+  for(const [v,s] of [[.25,'¼'],[.5,'½'],[.75,'¾']]) if(Math.abs(r-v)<.03) return (w?w+' ':'')+s; return null;}
+
+/* « 125 ml (2 tasse) » → « 125 ml (½ tasse) » : la valeur en ml sert de vérité */
+function fixConversions(line,log,enabled){
+  line=line.replace(/\b(\d+(?:[.,]\d+)?)\s*m[i1I!|](?=\s*(?:\(|de\b|d['’]))/g,'$1 ml');
+  if(enabled===false) return line;
+  return line.replace(/(\d+(?:[.,]\d+)?)\s*ml\s*\(\s*([^()]{0,14}?)\s*(tasses?|c\.\s*[àa]\s*(?:soupe|table|th[ée]|caf[ée])|c\.\s*[àa]\s*[st]\b\.?)\s*\)/gi,(m,n,q,u)=>{
+    const ml=parseFloat(n.replace(',','.'));
+    const cup=/tasse/i.test(u), tbsp=!cup&&/soupe|table|[àa]\s*s\b/i.test(u);
+    const exp=cup?cupQty(ml):spoonQty(ml,tbsp?15:5);
+    if(!exp) return m;
+    let unit=cup?(ml>=500?'tasses':'tasse'):u.replace(/c\.\s*[àa]\s*/i,'c. à ');
+    q=q.replace(/\s+/g,' ').trim();
+    const qn=q.replace(/1\/2/,'½').replace(/1\/4/,'¼').replace(/3\/4/,'¾').replace(/1\/3/,'⅓').replace(/2\/3/,'⅔').replace(/1\/8/,'⅛');
+    if(qn!==exp&&log) log.push(n+' ml : « '+(q||'∅')+' » → '+exp+' '+unit);
+    return n+' ml ('+exp+' '+unit+')';
+  });
+}
+
+function isNoise(s){
+  const letters=(s.match(/[A-Za-zÀ-ÿ]/g)||[]).length;
+  if(letters<2 && !/^\d[\d\s.,\/]*\s*[a-zA-Z]{1,2}$/.test(s)) return true;
+  if(!/\d/.test(s) && letters/s.length<0.45) return true;
+  if(!/\s/.test(s) && s.length>=10){const v=(s.match(/[aeiouyàâéèêëîïôöùûü]/gi)||[]).length; if(v/s.length<0.25) return true;}
+  return false;
+}
+function isCaps(s){const lo=(s.match(/[a-zà-ÿ]/g)||[]).length,up=(s.match(new RegExp('['+UP+']','g'))||[]).length;return up>=6&&lo<=up*0.12;}
+function sentenceCase(s){
+  if(!isCaps(s)) return s;
+  return s.toLowerCase().replace(/(^|[.!?…]\s+|:\s+)([a-zà-ÿ])/g,(m,a,b)=>a+b.toUpperCase());
+}
+function cleanLine(l){
+  let segs=l.split(/\t|\s{3,}/).map(s=>s.trim()).filter(Boolean);
+  if(segs.length>1){
+    const good=segs.filter(s=>!isNoise(s));
+    const mixed=good.filter(s=>/[a-zà-ÿ]/.test(s)&&!isCaps(s)&&(/^[\d¼½¾⅓⅔]/.test(s)||s.length>=12));
+    segs=mixed.length?mixed:good.slice(0,1);
+  }
+  let s=segs.join(' ')
+    .replace(/^[\s|=:;{}\[\]@_~*•·.,'"`^\\\/<>»—–-]+/,'')
+    .replace(/[\s|={}\[\]@_~^\\<>]+$/,'')
+    .replace(/\s+[;,:\-—–‘’'"`.!|]+$/,'')
+    .replace(/[  ]{2,}/g,' ');
+  return (!s||isNoise(s))?'':s;
+}
+function cleanLines(text){return text.replace(/\r/g,'').split('\n').map(cleanLine);}
+
+function stripAnnot(l){
+  return l.replace(new RegExp('\\s*[{\\[(|]\\s*['+UP+']['+UP+' !\'’.,-]{2,}[)}\\]]?(\\s+\\S{1,3})?\\s*$'),m=>/FAC|OPTION/i.test(m)?' (facultatif)':'').trim();
+}
+
+function parseIngredients(text,log,autofix,table){
+  if(table) return text.split('\n').map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean).map(l=>/^# /.test(l)?l:fixConversions(l,log,autofix));
+  const out=[];
+  let src=cleanLines(text).filter(Boolean);
+  if(src.filter(isCaps).length<src.length/2) src=src.filter(l=>!isCaps(l));
+  for(let l of src){
+    if(/^ingr[ée]dients?\s*:?$/i.test(l)) continue;
+    if((l.match(/[^A-Za-zÀ-ÿœŒ0-9\s,.'’()\-\/%°½¼¾⅓⅔⅛:;«»]/g)||[]).length>=3 && !/[{\[]\s*FAC/.test(l)) continue;
+    l=stripAnnot(l).replace(/^[A-Za-z]\s+(?=[A-ZÀ-Ü0-9])/,'');
+    if(/[a-zà-ÿ]{3}/.test(l)) l=l.replace(/\s+[\\{(\[|]\s*[A-ZÀ-Ü]{4,}\s*$/,'').replace(/\s+[^\sA-Za-zÀ-ÿ0-9]?\s*((?:[A-ZÀ-ÜŸ'’]+[ ,!.]*){2,})$/,(m,a)=>a.length>=8?'':m);
+    for(let t;(t=l.match(/^(.*\S)\s+(\S+)$/))&&l.split(/\s+/).length>2&&(/^[\d.,]+$/.test(t[2])||!/[A-Za-zÀ-ÿ]/.test(t[2])||(t[2].length<=3&&/[^A-Za-zÀ-ÿ.)]/.test(t[2])));) l=t[1];
+    l=l.replace(/^[-•*·▪◦]\s*/,'').replace(/^[YV][%2]\s/,'½ ');
+    if(!l) continue;
+    if(out.length && /^[a-zà-ÿ]/.test(l) && !/^(une?|quelques|du|des)\s/.test(l)) out[out.length-1]+=' '+l;
+    else out.push(l);
+  }
+  const Q=/^(\d|[¼½¾⅓⅔⅛])/;
+  return out.map((l,i)=>{
+    const nx=out[i+1]||'';
+    if(!Q.test(l)&&Q.test(nx)&&/^[A-ZÀ-Ü]/.test(l)&&l.split(/\s+/).length<=4&&l.length<=32&&!/[,.;:()]/.test(l)
+       &&!/\b(sel|poivre|huile|beurre|eau|go[uû]t|facultati|jus|zeste|pinc[ée]e|quelques)\b/i.test(l)&&(i===0||Q.test(out[i-1]))) return '# '+smallCaps(l);
+    return fixConversions(l,log,autofix);
+  });
+}
+
+function flat(s){return s.replace(/([A-Za-zÀ-ÿ])-\n([a-zà-ÿ])/g,'$1$2').replace(/\s*\n\s*/g,' ').replace(/\s{2,}/g,' ').trim();}
+
+function smallCaps(h){const L=h.replace(/[^A-Za-zÀ-ÿ]/g,''),U=L.replace(/[a-zà-ÿ]/g,'');return (L.length>=3&&U.length>=L.length*0.4)?h.charAt(0).toUpperCase()+h.slice(1).toLowerCase():h;}
+/* retire un sous-titre en fin de bloc (« PRÉPARATION DE LA SAUCE » juste avant l'étape suivante) */
+function pullHead(txt,min){
+  const L=txt.replace(/\s+$/,'').split('\n'), h=[];
+  while(L.length>min){
+    const last=L[L.length-1].trim();
+    if(!last){if(h.length)break;L.pop();continue;}
+    const letters=last.replace(/[^A-Za-zÀ-ÿ]/g,''), up=letters.replace(/[a-zà-ÿ]/g,'');
+    const prev=(L.slice(0,-1).reverse().find(x=>x.trim())||'').trim();
+    if(last.length<70&&letters.length>=4&&!/[.!?;,:)»]$/.test(last)&&up.length>=letters.length*0.4&&(!prev||h.length||/[.!?)»]$/.test(prev))){h.unshift(last);L.pop();}
+    else break;
+  }
+  return {txt:L.join('\n'),head:h.join(' ')};
+}
+/* Repère « 01 … 02 … », « 1. … 2. … », « 1) … » — n'accepte que des numéros consécutifs.
+   Les sous-titres entre les étapes ressortent comme des lignes « # Titre ». */
+function splitNumbered(body){
+  const re=new RegExp('(^|[\\s.!?»):;])(\\d{1,2})\\s*([.)\\-–:]?)\\s+(?=['+UP+'«])','g');
+  const marks=[];let m,exp=1;
+  while((m=re.exec(body))){
+    if(parseInt(m[2],10)!==exp) continue;
+    marks.push({i:m.index+m[1].length,e:re.lastIndex,strong:/^0\d$/.test(m[2])||!!m[3]});
+    exp++;
+  }
+  if(!marks.length) return null;
+  const raw=marks.map((k,j)=>body.slice(k.e,j+1<marks.length?marks[j+1].i:body.length));
+  const plain=raw.map(flat);
+  const avg=plain.reduce((a,x)=>a+x.length,0)/plain.length;
+  const strong=marks.filter(k=>k.strong).length/marks.length;
+  if(marks.length===1 ? !(marks[0].strong&&avg>40) : !(strong>=.5||avg>=60)) return null;
+  const P=pullHead(body.slice(0,marks[0].i),0), steps=[];
+  let head=P.head;
+  raw.forEach((seg,j)=>{
+    let txt=seg, next='';
+    if(j<raw.length-1){const q=pullHead(seg,1);txt=q.txt;next=q.head;}
+    if(head) steps.push('# '+smallCaps(head));
+    const f=flat(txt); if(f) steps.push(f);
+    head=next;
+  });
+  return {pre:P.txt,steps};
+}
+
+function parseSteps(text){
+  const body=cleanLines(text).join('\n');
+  const r=splitNumbered(body);
+  if(r) return (flat(r.pre)?[flat(r.pre)]:[]).concat(r.steps);
+  let paras=body.split(/\n\s*\n/).map(flat).filter(Boolean);
+  if(paras.length) paras[0]=paras[0].replace(/^1\s*[.)]?\s+(?=[A-ZÀ-Ü])/,'');   // recette à une seule étape numérotée
+  if(paras.length===1){
+    const bl=body.split('\n').filter(Boolean);
+    if(bl.length>1&&bl.every(l=>/^[-•*·▪◦]\s/.test(l))) return bl.map(l=>l.replace(/^[-•*·▪◦]\s*/,''));
+    if(paras[0].length>350){
+      const sents=paras[0].split(new RegExp('(?<=[.!?])\\s+(?=['+UP+'])'));
+      paras=[];let cur='';
+      for(const s of sents){ if(cur&&(cur+' '+s).length>240){paras.push(cur);cur=s;} else cur=cur?cur+' '+s:s; }
+      if(cur) paras.push(cur);
+    }
+  }
+  return paras;
+}
+
+const DUR='(\\d+\\s*(?:h(?:eures?|ours?|rs?)?\\b(?:\\s*\\d+(?:\\s*min(?:utes?|s)?)?)?|min(?:utes?|s)?))';
+const ING_LIKE=/^(\d|[¼½¾⅓⅔⅛]|[YV][%2]\s|une?\s|quelques\s|le jus|le zeste|sel\b|poivre\b|pinc[ée]e)/i;
+const ingLike=l=>ING_LIKE.test(l)&&l.length<90&&!/^\d+\s+[A-ZÀ-Ü\s]+$/.test(l);
+const META_LINE=/^(\S{1,2}min|(prep|cook|total|active|inactive|serves|makes|yields?)\b\s*:?\s*\d.*|(serves|makes|yields?|servings?|prep(aration)? time|cook(ing)? time|total time)\b.*|[\w-]+\.(com|net|org)|pour|en tout,?|incluant.*|par[- ]?portion.*|.{0,8}\bmin\b.*|\d+\s*(personnes?|portions?)|.*vaiss?elle|portions?\s*:.*|pr[ée]paration\s*:.+|cuisson\s*:.+)$/i;
+const NOTE_HEAD=/^(tips?|pro tips?|variations?|storage|make ahead|pour varier|recyclage|version\s+de\s+luxe|variantes?|notes?|note du chef|astuces?|trucs?|conseils?|bon à savoir|le saviez-vous)\b/i;
+const PREP_HEAD=/^(preparation|pr[ée]paration|[ée]tapes?|instructions?|m[ée]thode|marche [àa] suivre|directions?|method|steps)\s*:?$/i;
+const ING_HEAD=/^ingr[ée]dients?\s*:?$/i;
+const JUNK_LINE=/^[\w-]+\.(com|net|org)$/i;
+
+function parseRecipe(text,opts){
+  opts=opts||{};
+  const log=[], R={name:'',desc:'',yield:'',prep:'',cook:'',total:'',ing:[],steps:[],notes:'',fixes:log};
+  const t0=text.replace(/\r/g,'');
+  // lignes « • … » = ingrédients déjà repérés (tableau du PDF, ou liste à puces collée)
+  const marked=t0.split('\n').filter(l=>/^• /.test(l)).map(l=>l.slice(2));
+  const TOKEN='ZZINGREDIENTSZZ';   // repère de l'emplacement de chaque bloc d'ingrédients
+  const t=marked.length>=2?t0.split('\n').map((l,i,a)=>/^• /.test(l)?(i&&/^• /.test(a[i-1])?null:TOKEN):l).filter(l=>l!==null).join('\n'):t0;
+  let m;
+  if((m=t.match(/\bportions?\s*:?\s*(\d{1,2})(?:\s*(?:à|a|A|-)\s*(\d{1,2}))?(?!\d)/i))) R.yield=m[1]+(m[2]?' à '+m[2]:'')+' portions';
+  else if((m=t.match(/\bpour\s+(\d+(?:\s*(?:à|a|-)\s*\d+)?)\s*(personnes?|portions?)/i))||(m=t.match(/(\d+(?:\s*(?:à|-)\s*\d+)?)\s*(portions?|personnes?)/i))) R.yield=m[1].replace(/\s+/g,' ')+' '+m[2].toLowerCase();
+  else if((m=t.match(/(?:^|\n)\s*(?:donne|rendement|portions?)\s*:?\s*([^\n]{1,40})/i))) {R.yield=m[1].trim();if(/^\d+$/.test(R.yield))R.yield+=' portions';}
+  if(!R.yield&&(m=t.match(/(?:^|\n)\s*(?:serves|makes|yields?|servings?)\s*:?\s*([^\n]{1,40})/i))){R.yield=m[1].trim();if(/^\d+(\s*(to|-|–)\s*\d+)?$/.test(R.yield))R.yield+=(R.yield==='1'?' serving':' servings');}
+  R.yield=R.yield.split(/•|\s{2,}|\bse cong/i)[0].trim();if(/[A-ZÀ-Ü]{2}/.test(R.yield))R.yield=R.yield.toLowerCase();
+  if(!/\d/.test(R.yield)||/[\\|_{}]/.test(R.yield)) R.yield='';
+  if(!R.prep&&(m=t.match(new RegExp('prep(?:aration)?(?:\\s+time)?\\s*:?\\s*'+DUR,'i')))) R.prep=m[1];
+  if(!R.cook&&(m=t.match(new RegExp('cook(?:ing)?(?:\\s+time)?\\s*:?\\s*'+DUR,'i')))) R.cook=m[1];
+  if(!R.total&&(m=t.match(new RegExp('total(?:\\s+time)?\\s*:?\\s*'+DUR,'i')))) R.total=m[1];
+  if((m=t.match(new RegExp('pr[ée]p(?:aration)?\\s*:?\\s*'+DUR,'i')))) R.prep=m[1];
+  if((m=t.match(new RegExp('cuisson\\s*:?\\s*'+DUR,'i')))) R.cook=m[1];
+  if((m=t.match(new RegExp(DUR+'\\s*(?:en tout|au total)','i')))||(m=t.match(new RegExp('(?:temps\\s+)?total\\s*:?\\s*'+DUR,'i')))) R.total=m[1].replace(/\s+/g,' ');
+
+  ['prep','cook','total'].forEach(k=>{R[k]=R[k].replace(/\s+/g,' ').toLowerCase();});
+  let lines=cleanLines(t).map(l=>JUNK_LINE.test(l)?'':l);
+  const letters=t.replace(/[^A-Za-zÀ-ÿ]/g,'');
+  const mixedDoc=(letters.match(/[a-zà-ÿ]/g)||[]).length>letters.length*0.25;
+  const notes=[], nutri=[];
+  lines=lines.filter(l=>{if(/^par\s+[^:]{2,25}:\s*cal/i.test(l)){nutri.push('Valeur nutritive — '+l.toLowerCase());return false;}return true;});
+
+  // Notes en fin de page (« POUR VARIER », « Astuce »…)
+  let ni=lines.findIndex((l,i)=>i>3&&NOTE_HEAD.test(l));
+  if(ni>0){notes.push(lines.slice(ni).filter(l=>l&&l!==TOKEN).join(' '));lines=lines.slice(0,ni);}
+  const linesT=lines, tk=lines.map((l,i)=>l===TOKEN?i:-1).filter(i=>i>=0);
+  lines=lines.filter(l=>l!==TOKEN);
+
+  let pre,stepText=null;
+  const body=lines.join('\n');
+  let num=splitNumbered(body);
+  if(num){
+    pre=num.pre.split('\n');
+    // lignes en capitales dans la préparation = notes de marge
+    if(mixedDoc){
+      const rest=body.slice(num.pre.length).split('\n'), keep=[];
+      const side=[];
+      rest.forEach((l,i)=>{
+        const nx=rest.slice(i+1).find(x=>x.trim())||'';
+        if(l&&isCaps(l)&&!/^\s*\d{1,2}\s*[.)]?\s+[A-ZÀ-Ü«]/.test(nx)&&!(isCaps(nx)&&nx)) side.push(l); else keep.push(l);
+      });
+      if(side.length) notes.push(side.join(' '));
+      num=splitNumbered(num.pre+keep.join('\n'))||num;
+    }
+    R.steps=num.steps;
+  }else{
+    const pi=lines.findIndex(l=>PREP_HEAD.test(l));
+    if(tk.length){pre=linesT.slice(0,tk[0]);stepText=linesT.slice(tk[tk.length-1]+1).filter(l=>!PREP_HEAD.test(l)).join('\n');}
+    else if(pi>=0){pre=lines.slice(0,pi);stepText=lines.slice(pi+1).join('\n');}
+    else{
+      const i0=lines.findIndex(ingLike);
+      let si=-1;
+      if(i0>=0) si=lines.findIndex((l,i)=>i>i0&&!ingLike(l)&&(l.length>70||(/[.!]$/.test(l)&&l.split(/\s+/).length>=8)));
+      if(si>0){pre=lines.slice(0,si);stepText=lines.slice(si).join('\n');}
+      else pre=lines;
+    }
+    if(stepText!=null) R.steps=parseSteps(stepText);
+  }
+
+  pre=pre.filter(l=>l&&!PREP_HEAD.test(l));
+  const isMeta=l=>META_LINE.test(l)||(/•/.test(l)&&/pr[ée]paration|cuisson|portions?/i.test(l))||/(pr[ée]paration|cuisson|trempage|r[ée]frig[ée]ration|portions|cong[èe]le)\s*:?\s*\d/i.test(l)||/^se cong[èe]le\b/i.test(l);
+  let head;
+  if(marked.length>=2){
+    head=pre.filter(l=>!isMeta(l)&&!ING_HEAD.test(l));
+    R.ing=parseIngredients(marked.join('\n'),log,opts.autofix,true);
+  }else{
+    let hi=pre.findIndex(l=>ING_HEAD.test(l)), i0;
+    if(hi>=0) i0=hi+1; else { i0=pre.findIndex(l=>ingLike(l)&&!isMeta(l)); if(i0<0) i0=pre.length; hi=i0; }
+    head=pre.slice(0,hi).filter(l=>!isMeta(l));
+    let ingLines=pre.slice(i0).filter(l=>!isMeta(l));
+    if(mixedDoc) ingLines=ingLines.filter(l=>!isCaps(l));
+    R.ing=parseIngredients(ingLines.join('\n'),log,opts.autofix);
+  }
+  if(opts.titled||(head.length&&head[0].length>90)){R.desc=sentenceCase(head.join(' '));head=[];}
+
+  if(head.length){
+    const capT=l=>{const L=l.replace(/[^A-Za-zÀ-ÿ]/g,''),U=L.replace(/[a-zà-ÿ]/g,'');return L.length>=4&&U.length>=L.length*0.7;};
+    let ti=head.slice(0,4).findIndex(capT); if(ti<0) ti=0;
+    let n=1;
+    if(head.length>ti+1&&head[ti].length<25&&capT(head[ti+1])&&head[ti+1].length<25) n=2;
+    R.name=repairTitle(head.slice(ti,ti+n).join(' ').replace(/\s+/g,' '),t);
+    if(capT(R.name)) R.name=R.name.toLowerCase();
+    R.name=R.name.replace(/\s(pe|ve|oc|oe|be)\s/gi,' de ').replace(/\s(er)\s/gi,' et ');
+    R.name=R.name.charAt(0).toUpperCase()+R.name.slice(1);
+    R.desc=sentenceCase(head.slice(ti+n).join(' '));
+  }
+  R.notes=notes.map(sentenceCase).map(x=>x.replace(/^\S+/,w=>smallCaps(w))).concat(nutri).join('\n').replace(/^notes?\s*:?\s+(?=\S)/i,'');
+  return R;
+}
+
+/* Titres en lettrage décoratif (« Sal:de », « GiTEAU ») : on retrouve le mot dans le reste de la page */
+function repairTitle(name,text){
+  const words={};(text.toLowerCase().match(/[a-zà-ÿœ]{4,}/g)||[]).forEach(w=>{words[w]=(words[w]||0)+1;});
+  return name.split(/\s+/).map(tok=>{
+    const core=tok.replace(/^[^A-Za-zÀ-ÿ]+|[^A-Za-zÀ-ÿ]+$/g,'');
+    if(core.length<3) return tok;
+    const up=(core.match(/[A-ZÀ-Ü]/g)||[]).length, lo=(core.match(/[a-zà-ÿ]/g)||[]).length;
+    let pat='',odd=0;
+    for(const ch of core){
+      const isL=/[A-Za-zÀ-ÿ]/.test(ch);
+      if(!isL||(up>=3&&lo<=2&&/[a-zà-ÿ]/.test(ch))){odd++;pat+='[a-zà-ÿœ]{0,2}';}
+      else pat+=ch.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,'');
+    }
+    if(!odd||odd>2) return tok;
+    const re=new RegExp('^'+pat+'$');let best=null;
+    for(const w in words) if(re.test(w)&&w!==core.toLowerCase()&&(!best||words[w]>words[best])) best=w;
+    return best?(up>lo?best.toUpperCase():best):tok;
+  }).join(' ');
+}
+function looksLikeRecipe(r,relaxed){
+  const ing=r.ing.filter(l=>!/^# /.test(l)), steps=r.steps.filter(l=>!/^# /.test(l)), n=ing.length;
+  if(n<(relaxed?2:3)||n>(relaxed?60:30)||!steps.length) return false;
+  if(!relaxed&&ing.filter(l=>/^[\d¼½¾⅓⅔⅛]/.test(l)).length<n*0.4) return false;
+  return steps.join(' ').length>=(relaxed?40:80);
+}
+/* Titres imprimés en capitales : les accents manquent (ou sont perdus à la numérisation). On remet les plus courants en cuisine. */
+const FR_ACC={};
+('crème brûlée brûlé mijoté mijotés étagé étagée légumes légume braisé braisés effiloché côtes côte levées gâteau gâteaux ragoût fèves fève érable pâtes pâte pâté pâtés épices épicé épicés rôti rôtis rôtie '
++'poêlé poêlée séché séchés végé soufflé pochés poché sauté sautés salé salés sucré sucrés caramélisé caramélisés grillé grillés fumé fumés glacé glacés croûte crêpes crêpe épinards céleri échalotes échalote '
++'thé café chômeur jamaïcaine saté entrées entrée purée purées pêches pêche chèvre bûche pâtisserie fraîche fraîches frais général végétarien végétarienne méditerranéenne crémeux crémeuse à forêt maïs noël '
++'dés désossé désossés haché hachés farcie farcies gelée confit pâtissons bœuf œuf œufs cœur cœurs râpé râpés tomaté panés pané sésame réconfortant réconfortante dîner déjeuner goûter août fenouil')
+  .split(/\s+/).forEach(w=>{const k=w.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/œ/g,'oe');if(k!==w)FR_ACC[k]=w;});
+function frAccents(t){
+  return t.replace(/\bala\b/gi,'à la').replace(/\ba (?=la\b|l['’‘]|base\b)/gi,m=>m[0]==='A'?'À ':'à ')
+    .replace(/[A-Za-z]{2,}/g,w=>{
+      const lw=w.toLowerCase(); let r=FR_ACC[lw];
+      if(!r&&/[^e]ees?$/.test(lw)&&lw.length>4) r=lw.replace(/ee(s?)$/,'ée$1');     // -ee(s) → -ée(s)
+      if(!r) return w;
+      return w[0]===w[0].toUpperCase()?r.charAt(0).toUpperCase()+r.slice(1):r;
+    });
+}
+/* Lignes « Titre ..... 31 », « Titre, 31 » ou « Titre P. 31 » d'une table des matières ou d'un index.
+   Une ligne en retrait continue le titre de la ligne précédente. */
+function tocEntries(text){
+  const out=[];let pend='';
+  for(let raw of text.split('\n')){
+    const cont=/^\s/.test(raw)&&pend;
+    if(/\bvoir\b/i.test(raw)){pend='';continue;}
+    raw=raw.replace(/\s*\bP\s?([0-9OoSsIl]{2,4})\s*$/,(m,d)=>{const n=parseInt(d.replace(/[Oo]/g,'0').replace(/[Ss]/g,'5').replace(/[Il]/g,'1'),10);return /\d/.test(d)&&n>0&&n<1000?' P. '+n:m;});
+    let found=0;
+    for(const seg of raw.split(/\t|\s{3,}/)){
+      const re=/([A-Za-zÀ-ÿŒœ(][^\d\n]{2,70}?)[\s,.…·:•_-]*[\s,.…·]\s*(?:[Pp]\.\s*)?(\d{1,3})(?=\s|$)/g;let m;
+      while((m=re.exec(seg))){
+        let title=m[1].replace(/[\s,.…·:•_-]+$/,'').replace(/\s+/g,' ').trim();
+        if(cont&&!found) title=pend+' '+title;
+        found++;
+        {const L=title.replace(/[^A-Za-zÀ-ÿ]/g,''),U=L.replace(/[a-zà-ÿ]/g,'');if(L.length>=4&&U.length>=L.length*0.7)title=frAccents(title.charAt(0)+title.slice(1).toLowerCase());}
+        title=title.replace(/\bb(c|o)euf/gi,m=>m[0]+'œuf').replace(/\b(c|o)eufs?\b/gi,m=>(m[0]==='C'||m[0]==='O'?'Œ':'œ')+m.slice(2)).replace(/\bc(c|o)eur/gi,m=>m[0]+'œur');
+        if((title.match(/[A-Za-zÀ-ÿ]/g)||[]).length>=3&&!/^(et|à|ou|pages?|p)$/i.test(title)) out.push({title,page:+m[2]});
+      }
+    }
+    const line=raw.trim();
+    pend=found?'':(line&&!/\d$/.test(line)?(cont?pend+' '+line:line):'');
+  }
+  return out;
+}
+/* « Pouletau beurre » → « Poulet au beurre » : recolle les espaces perdus à l'aide des mots de la page */
+function unglue(title,text,extra){
+  const page=new Set(text.toLowerCase().match(/[a-zà-ÿœ]{3,}/g)||[]), words=new Set(page);
+  ((extra||'').toLowerCase().match(/[a-zà-ÿœ]{3,}/g)||[]).forEach(w=>words.add(w));
+  title.toLowerCase().split(' ').forEach(w=>{if(!page.has(w))words.delete(w);});
+  const SMALL=new Set(['de','du','des','au','aux','et','à','la','le','les','en','un','une']);
+  const has=x=>words.has(x)||SMALL.has(x);
+  return title.split(' ').map(tok=>{
+    const lo=tok.toLowerCase();
+    if(lo.length<5||has(lo)||/[^a-zà-ÿœ]/.test(lo)) return tok;
+    for(let i=lo.length-1;i>=2;i--){const x=lo.slice(0,i),y=lo.slice(i);
+      if(has(x)&&has(y)&&(words.has(x)||words.has(y))&&(x.length>=4||y.length>=4)) return tok.slice(0,i)+' '+tok.slice(i);}
+    return tok;
+  }).join(' ');
+}
+function accent(title,text){
+  const map={};
+  for(const w of text.match(/[A-Za-zÀ-ÿœŒ]{3,}/g)||[]){const lw=w.toLowerCase();if(!/[à-ÿœ]/.test(lw))continue;const k=fold(lw);(map[k]=map[k]||{})[lw]=(map[k][lw]||0)+1;}
+  return title.replace(/[A-Za-zÀ-ÿœŒ]{3,}/g,w=>{
+    if(/[À-ÿœŒ]/.test(w)) return w;
+    const c=map[fold(w)]; if(!c) return w;
+    const best=Object.keys(c).sort((a,b)=>c[b]-c[a])[0];
+    // ne remplace que si la forme accentuée domine nettement la forme sans accent dans la page
+    const plain=(text.toLowerCase().match(new RegExp('(^|[^a-zà-ÿ])'+w.toLowerCase()+'(?![a-zà-ÿ])','g'))||[]).length;
+    if(c[best]<plain) return w;
+    return w[0]===w[0].toUpperCase()?best.charAt(0).toUpperCase()+best.slice(1):best;
+  });
+}
+const fold=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/œ/g,'oe');
+const keyOf=s=>fold(s).replace(/[^a-z0-9]/g,'');
+/* part des mots du titre retrouvés dans le texte de la page */
+function titleScore(title,text){
+  const w=fold(title).match(/[a-z]{4,}/g)||[]; if(!w.length) return 0;
+  const t=fold(text);return w.filter(x=>t.includes(x)).length/w.length;
+}
+function doubtfulTitle(s){
+  s=(s||'').trim();const L=s.replace(/[^A-Za-zÀ-ÿ]/g,'');
+  return L.length<4||s.length>90||/[^A-Za-zÀ-ÿœŒ0-9\s'’,()!?-]/.test(s)||/\b[a-zà-ÿ]\s[a-zà-ÿ]\s/.test(s);
+}
+function toISO(s){
+  s=(s||'').trim(); if(!s) return undefined;
+  if(/^PT/i.test(s)) return s.toUpperCase();
+  let h=0,mn=0,m;
+  if((m=s.match(/(\d+)\s*h(?:eures?)?\s*(\d+)?/i))){h=+m[1];mn=+(m[2]||0);}
+  else if((m=s.match(/(\d+)\s*(?:min|m\b)/i))||(m=s.match(/^(\d+)$/))) mn=+m[1];
+  else return s;
+  return 'PT'+(h?h+'H':'')+(mn||!h?mn+'M':'');
+}
+
+function buildLD(r,opts){
+  opts=opts||{};
+  const list=s=>(s||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const extra=[];
+  if(opts.inlineNotes&&r.notes&&r.notes.trim()) extra.push('Notes : '+r.notes.trim());
+  if((opts.inlineNotes||opts.inlineSource)&&r.source&&r.source.trim()) extra.push('Source : '+r.source.trim());
+  const ld={'@context':'https://schema.org','@type':'Recipe',name:(r.name||'').trim()||'Recette sans titre'};
+  const desc=[(r.desc||'').trim()].concat(extra).filter(Boolean).join('\n\n');
+  if(desc) ld.description=desc;
+  if(r.yield&&r.yield.trim()) ld.recipeYield=r.yield.trim();
+  for(const [k,f] of [['prepTime','prep'],['cookTime','cook'],['totalTime','total']]){const v=toISO(r[f]); if(v) ld[k]=v;}
+  ld.recipeIngredient=(r.ing||[]).map(x=>x.trim()).filter(x=>x&&!/^#\s/.test(x));
+  ld.recipeInstructions=(r.steps||[]).map(x=>x.trim()).filter(x=>x&&!/^#\s/.test(x)).map(x=>({'@type':'HowToStep',text:x}));
+  const c=list(r.cats); if(c.length) ld.recipeCategory=c;
+  const k=list(r.tags); if(k.length) ld.keywords=k.join(', ');
+  return ld;
+}
+
+root.RP={accent,smallCaps,flat,unglue,tocEntries,keyOf,titleScore,looksLikeRecipe,doubtfulTitle,repairTitle,parseRecipe,parseIngredients,parseSteps,fixConversions,buildLD,toISO,cleanLines,sentenceCase,flat};
+})(typeof window!=='undefined'?window:globalThis);
+</script>
+
+<!-- ===================== Mise en page des PDF ===================== -->
+<script id="layout-js">
+/* ===== Mise en page : éléments positionnés d'une page → lignes dans l'ordre de lecture =====
+   Gère les colonnes de texte, les tableaux d'ingrédients (quantité | nom | métrique) et les retraits.
+   Les lignes d'ingrédients tirées d'un tableau commencent par « • » ; leurs sous-titres par « • # ». */
+(function(root){
+'use strict';
+const QTY=/^(\+ ?)?(\d+([ .,\/]\d+)*|[¼½¾⅓⅔⅛])( ?(à|-|ou) ?\d+([ \/.,]\d+)*)?( ?(t|tasses?|c\. ?à ?(tab|thé|soupe|table|café|s\.?|t\.?)|lb|oz|ml|g|kg|l|cl|po|cm|pincées?|bo[îi]tes?|sachets?|paquets?|tranches?|gousses?|bte|pqt|pintes?|gouttes?))?\.?$/i;
+const METRIC=/^\d+([.,]\d+)?( ?(à|-) ?\d+([.,]\d+)?)?( ?(ml|l|g|kg|cm|mm|cl))?$/i;
+const med=a=>{if(!a.length)return 0;const b=a.slice().sort((x,y)=>x-y);return b[b.length>>1];};
+
+function layoutPage(items){
+  items=items.filter(i=>i.s&&i.s.trim()&&!i.rot);
+  if(!items.length) return {lines:[],text:''};
+  const u=med(items.filter(i=>i.s.trim().length>=3).map(i=>i.w/i.s.length))||med(items.map(i=>i.h))*0.5||8;
+  // 1. rangées (même ligne de base) puis segments (coupés aux grands blancs)
+  items=items.slice().sort((a,b)=>a.y-b.y||a.x-b.x);
+  const rows=[];
+  for(const it of items){const R=rows[rows.length-1];if(R&&Math.abs(it.y-R.y)<=0.5*u)R.items.push(it);else rows.push({y:it.y,items:[it]});}
+  let segs=[];
+  for(const R of rows){
+    R.items.sort((a,b)=>a.x-b.x);let cur=null;
+    for(const it of R.items){
+      const gap=cur?it.x-cur.x1:0;
+      if(cur&&gap<=2.5*u){cur.t+=(gap>0.25*u&&!/\s$/.test(cur.t)&&!/^\s/.test(it.s)?' ':'')+it.s;cur.x1=Math.max(cur.x1,it.x+it.w);}
+      else{cur={x0:it.x,x1:it.x+it.w,y:R.y,t:it.s,f:it.f};segs.push(cur);}
+    }
+  }
+  segs.forEach(s=>{s.t=s.t.replace(/\s+/g,' ').trim();});
+  segs=segs.filter(s=>s.t);
+  // pas de ligne typique (distance au segment du dessous qui chevauche en x)
+  const below=[];
+  for(const a of segs){let d=1e9;for(const b of segs){if(b.y>a.y+0.5*u&&b.x0<a.x1&&b.x1>a.x0)d=Math.min(d,b.y-a.y);}if(d<1e9)below.push(d);}
+  const pitch=med(below)||3*u;
+
+  // 2. tableaux d'ingrédients
+  const byRow=new Map();segs.forEach(s=>{const k=Math.round(s.y/(0.5*u));if(!byRow.has(k))byRow.set(k,[]);byRow.get(k).push(s);});
+  const cand=[];
+  for(const list of byRow.values()){
+    list.sort((a,b)=>a.x0-b.x0);
+    for(let i=0;i<list.length-1;i++){
+      const q=list[i],n=list[i+1];
+      if(q.t.length<=18&&QTY.test(q.t)&&!QTY.test(n.t)&&!METRIC.test(n.t)){
+        const m=list[i+2]&&(METRIC.test(list[i+2].t))?list[i+2]:null;
+        const c={q,n,m,y:q.y,nt:n.t,mt:m?m.t:''};
+        if(!m){const k=n.t.match(/^(.*\S) (\d+(?:[.,]\d+)?(?: ?(?:à|-) ?\d+)? ?(?:ml|l|g|kg|cm|cl))$/i);if(k){c.nt=k[1];c.mt=k[2];}}
+        c.weak=/^\d{1,2}$/.test(q.t)&&!c.mt&&/^[A-ZÀ-Ü]/.test(n.t)&&n.t.length>38;
+        cand.push(c);i+=m?2:1;
+      }
+    }
+  }
+  const groups=new Map();
+  for(const c of cand){const k=Math.round(c.q.x0/(2*u))+':'+Math.round(c.n.x0/(2*u));if(!groups.has(k))groups.set(k,[]);groups.get(k).push(c);}
+  const used=new Set(), boxes=[];
+  const qval=q=>{const k=q.match(/^(\d+(?:[.,]\d+)?)(?:\/(\d+)| (\d+)\/(\d+))?/);if(!k)return 0;const a=parseFloat(k[1].replace(',','.'));return k[2]?a/k[2]:a+(k[3]?k[3]/k[4]:0);};
+  const expand=q=>{const big=qval(q)>=2;
+    return q.replace(/(\d|[¼½¾⅓⅔⅛]) ?t\b(?!\.)/gi,(m,d)=>d+(big?' tasses':' tasse')).replace(/c\. ?à ?tab(le)?\b/gi,'c. à soupe');};
+  const nice=h=>{const L=h.replace(/[^A-Za-zÀ-ÿ]/g,''),U=L.replace(/[a-zà-ÿ]/g,'');return (L.length>=3&&U.length>=L.length*0.4)?h.charAt(0).toUpperCase()+h.slice(1).toLowerCase():h;};
+  const compose=r=>{
+    let q=expand(r.q.t+(r.qx||'')), n=r.nt+(r.nx||''), m=r.mt;
+    if(m&&/[a-z]/i.test(m)) return m+' ('+q+') '+n;
+    return q+' '+n;
+  };
+  for(const g of groups.values()){
+    if(g.length<2||g.every(c=>c.weak)) continue;
+    g.sort((a,b)=>a.y-b.y);
+    {const gg=[];for(let i=1;i<g.length;i++)gg.push(g[i].y-g[i-1].y);if(med(gg)>2.6*pitch) continue;}
+    const qx=med(g.map(c=>c.q.x0)), nx=med(g.map(c=>c.n.x0));
+    const gaps=[];for(let i=1;i<g.length;i++)gaps.push(g[i].y-g[i-1].y);
+    const rp=Math.min(med(gaps.filter(d=>d<3*pitch))||pitch*1.3,2*pitch);
+    const xmax=Math.max.apply(null,g.map(c=>(c.m||c.n).x1));
+    g.forEach(c=>{used.add(c.q);used.add(c.n);if(c.m)used.add(c.m);});
+    // lignes isolées rattachées au tableau : suites, ingrédients sans quantité, sous-titres
+    const lone=segs.filter(s=>!used.has(s)&&s.x0>=qx-u&&s.x1<=xmax+2*u&&s.y>g[0].y-2.2*rp&&s.y<g[g.length-1].y+2.6*rp).sort((a,b)=>a.y-b.y);
+    const out=g.map(c=>({y:c.y,row:c}));
+    let lastY=g[g.length-1].y;
+    for(const s of lone){
+      const prev=out.filter(o=>o.y<s.y-0.5*u).sort((a,b)=>b.y-a.y)[0];
+      const next=out.filter(o=>o.y>s.y+0.5*u).sort((a,b)=>a.y-b.y)[0];
+      const dy=prev?s.y-(prev.yEnd||prev.y):1e9;
+      if(!prev&&!next) continue;
+      if(!next&&dy>1.6*rp) continue;                       // trop loin sous le tableau
+      if(!prev&&next.y-s.y>1.6*rp) continue;                // trop loin au-dessus
+      const atName=Math.abs(s.x0-nx)<=1.5*u, atQty=Math.abs(s.x0-qx)<=1.5*u;
+      if(atQty&&/^\+/.test(s.t)&&prev&&prev.row){prev.row.qx=(prev.row.qx||'')+' '+s.t;prev.yEnd=s.y;used.add(s);}
+      else if(atName&&prev&&dy<=0.86*rp){ if(prev.row)prev.row.nx=(prev.row.nx||'')+' '+s.t;else prev.t+=' '+s.t; used.add(s);prev.yEnd=s.y; }
+      else if(atName&&prev&&dy<=1.6*rp){out.push({y:s.y,t:s.t});used.add(s);}
+      else if(atQty&&!/[.!?:]$/.test(s.t)&&s.t.length<60&&next&&next.y-s.y<=2.4*rp&&(!prev||dy<=3.2*rp)){const last=out[out.length-1];
+        if(last&&last.head&&s.y-last.y<=1.2*rp){last.t+=' '+s.t;last.y2=s.y;}else out.push({y:s.y,t:'# '+s.t,head:true});used.add(s);}
+    }
+    out.sort((a,b)=>a.y-b.y);
+    // une suite attachée à une ligne « suite » doit suivre la chaîne
+    const lines=out.map(o=>o.row?compose(o.row):o.head?'# '+nice(o.t.slice(2)):o.t);
+    const ys=out.map(o=>o.y).concat(out.map(o=>o.yEnd||o.y2||o.y));
+    boxes.push({x0:qx,x1:xmax,y0:Math.min.apply(null,ys)-2*u,y1:Math.max.apply(null,ys)+0.4*u,ing:lines});
+  }
+  // 3. boîtes de texte restantes
+  for(const s of segs) if(!used.has(s)) boxes.push({x0:s.x0,x1:s.x1,y0:s.y-2*u,y1:s.y+0.4*u,y:s.y,t:s.t,f:s.f});
+
+  // 4. ordre de lecture : découpage récursif (colonnes d'abord)
+  const out=[];
+  const gutter=B=>{            // plus large blanc vertical traversant toute la zone
+    const iv=B.map(b=>[b.x0,b.x1]).sort((a,b)=>a[0]-b[0]);let end=iv[0][1],best=null;
+    for(const [a,b] of iv){ if(a-end>=2.5*u&&(!best||a-end>best.w))best={w:a-end,x:(a+end)/2}; end=Math.max(end,b); }
+    if(!best) return null;
+    const L=B.filter(b=>b.x1<=best.x),R=B.filter(b=>b.x0>=best.x);
+    const nrows=X=>new Set(X.map(b=>Math.round((b.y||b.y0)/u))).size+X.filter(b=>b.ing).reduce((n,b)=>n+b.ing.length,0);
+    return (nrows(L)>=2&&nrows(R)>=2)?{L,R}:null;
+  };
+  const emitLeaf=B=>{
+    B=B.slice().sort((a,b)=>(a.y||a.y0)-(b.y||b.y0)||a.x0-b.x0);
+    const x0=Math.min.apply(null,B.map(b=>b.x0));let prevY=null,line=null;
+    for(const b of B){
+      if(b.ing){ if(out.length&&out[out.length-1]!=='')out.push(''); b.ing.forEach(l=>out.push('• '+l)); out.push(''); prevY=b.y1;line=null;continue; }
+      if(line&&Math.abs(b.y-line.y)<=0.5*u){out[line.i]+=' '+b.t;continue;}
+      if(prevY!==null&&b.y-prevY>1.45*pitch&&out[out.length-1]!=='') out.push('');
+      out.push((b.x0-x0>0.6*u&&b.x0-x0<4*u?' ':'')+b.t);line={y:b.y,i:out.length-1};prevY=b.y;
+    }
+  };
+  const walk=(B,depth)=>{
+    if(!B.length) return;
+    if(B.length<3||depth>12){emitLeaf(B);return;}
+    const g=gutter(B);
+    if(g){walk(g.L,depth+1);if(out[out.length-1]!=='')out.push('');walk(g.R,depth+1);return;}
+    // pas de colonne sur toute la hauteur : chercher la plus grande tranche horizontale qui en a une
+    const ys=B.map(b=>[b.y0,b.y1]).sort((a,b)=>a[0]-b[0]);const cuts=[ys[0][0]-1];let end=ys[0][1];
+    for(const [a,b] of ys){if(a>end)cuts.push((a+end)/2);end=Math.max(end,b);}
+    cuts.push(end+1);
+    let best=null;
+    for(let i=0;i<cuts.length-1;i++)for(let j=cuts.length-1;j>i;j--){
+      if(i===0&&j===cuts.length-1) continue;
+      if(best&&cuts[j]-cuts[i]<=best.h) break;
+      const sub=B.filter(b=>b.y0>=cuts[i]&&b.y1<=cuts[j]);
+      if(sub.length>=4&&gutter(sub)){best={h:cuts[j]-cuts[i],a:cuts[i],b:cuts[j]};break;}
+    }
+    if(!best){emitLeaf(B);return;}
+    walk(B.filter(b=>b.y1<=best.a),depth+1);
+    walk(B.filter(b=>b.y0>=best.a&&b.y1<=best.b),depth+1);
+    walk(B.filter(b=>b.y0>=best.b),depth+1);
+  };
+  walk(boxes,0);
+  while(out.length&&out[out.length-1]==='')out.pop();
+  return {lines:out,text:out.join('\n'),u,pitch};
+}
+root.LAYOUT={layoutPage};
+})(typeof window!=='undefined'?window:globalThis);
+</script>
+
+<!-- ===================== Application ===================== -->
+<script>
+(function(){
+'use strict';
+const LIBS={
+  pdf:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  pdfWorker:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+  tess:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'
+};
+const $=id=>document.getElementById(id);
+const cv=$('cv'), ctx=cv.getContext('2d',{willReadFrequently:false});
+const S={pdf:null,page:null,viewport:null,pnum:1,rot:0,img:null,sel:null,hasLayer:false,photo:null,workers:{},group:null,busy:false,batch:[],editing:null,stop:false,epub:null,tcache:new Map(),pscore:new Map(),tocOff:0};
+
+/* ---------- utilitaires ---------- */
+function msg(id,text,cls){const e=$(id);e.textContent=text||'';e.className='msg'+(cls?' '+cls:'');}
+function progress(p,id){const e=$(id||'prog');if(p==null){e.style.display='none';return;}e.style.display='block';e.firstElementChild.style.width=Math.round(p*100)+'%';}
+const loaded={};
+function loadScript(url){
+  return loaded[url]||(loaded[url]=new Promise((res,rej)=>{const s=document.createElement('script');s.src=url;s.onload=res;
+    s.onerror=()=>{delete loaded[url];rej(new Error('Impossible de charger '+url+' — une connexion Internet est requise pour les bibliothèques PDF/OCR.'));};document.head.appendChild(s);}));
+}
+async function ensurePdf(){
+  await loadScript(LIBS.pdf);
+  if(!S.pdfReady){
+    try{const r=await fetch(LIBS.pdfWorker);const b=new Blob([await r.text()],{type:'text/javascript'});pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(b);}
+    catch(e){pdfjsLib.GlobalWorkerOptions.workerSrc=LIBS.pdfWorker;}
+    S.pdfReady=true;
+  }
+}
+function store(k,v){try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||'null');if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v));}catch(e){return null;}}
+
+/* ---------- chargement de la source ---------- */
+async function openFile(f){
+  if(!f) return;
+  msg('src-msg','Ouverture de « '+f.name+' »…');
+  try{
+    S.sel=null;S.rot=0;drawSel();
+    $('b-from').disabled=$('b-to').disabled=false;S.tcache=new Map();S.pscore=new Map();S.tocOff=0;S.wordLayer=undefined;
+    ['t-from','t-to','t-off'].forEach(id=>{$(id).value='';$(id).disabled=false;});$('t-find').disabled=true;msg('t-msg','');
+    if(f.type==='application/epub+zip'||/\.epub$/i.test(f.name)){
+      S.pdf=null;S.page=null;S.img=null;S.hasLayer=false;
+      S.epub=await openEpub(await f.arrayBuffer());
+      $('viewer').style.display='none';$('pagebar').style.display='none';$('extract').disabled=true;$('photo-btn').disabled=true;
+      $('b-from').disabled=$('b-to').disabled=true;$('b-from').value=$('b-to').value='';$('b-scan').disabled=false;
+      if(S.epub.title)$('b-book').value=S.epub.title;
+      ['t-from','t-to','t-off'].forEach(id=>$(id).disabled=true);
+      msg('t-msg',S.epub.toc.length?'Table des matières de l’EPUB : '+S.epub.toc.length+' entrées.':'Cet EPUB n’a pas de table des matières exploitable.');
+      msg('src-msg','EPUB chargé : '+S.epub.spine.length+' sections. Les recettes détectées sont dans la liste « Lot » ; touchez-en une pour la vérifier.','ok');
+      await scanEpub();
+      return;
+    }
+    S.epub=null;
+    if(f.type==='application/pdf'||/\.pdf$/i.test(f.name)){
+      await ensurePdf();
+      S.img=null;
+      S.pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+      $('pcount').textContent='/ '+S.pdf.numPages; $('pnum').max=S.pdf.numPages;
+      $('pdfnav').style.display='';
+      $('b-from').value=1;$('b-to').value=S.pdf.numPages;$('b-from').max=$('b-to').max=S.pdf.numPages;$('b-scan').disabled=false;
+      if(!$('b-book').value.trim()){try{const md=await S.pdf.getMetadata();const t=md&&md.info&&md.info.Title;if(t)$('b-book').value=String(t).split(/\s+[:—–-]\s+/)[0].trim();}catch(e){}}
+      await showPage(1);
+      $('t-find').disabled=false;findToc(true);
+    }else{
+      S.pdf=null;S.page=null;S.hasLayer=false;$('b-scan').disabled=true;
+      let bmp;
+      try{bmp=await createImageBitmap(f,{imageOrientation:'from-image'});}
+      catch(e){bmp=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('Format d’image non pris en charge.'));i.src=URL.createObjectURL(f);});}
+      S.img=bmp; $('pdfnav').style.display='none';
+      drawImage();
+      msg('src-msg','Image chargée. Tracez une zone au besoin, puis « Extraire ».');
+    }
+    $('viewer').style.display='block';$('pagebar').style.display='flex';
+    $('extract').disabled=false;$('photo-btn').disabled=false;
+  }catch(e){msg('src-msg',e.message||String(e),'err');}
+}
+function drawImage(){
+  const i=S.img, max=2800, k=Math.min(1,max/Math.max(i.width,i.height));
+  const w=Math.round(i.width*k),h=Math.round(i.height*k), q=S.rot%180!==0;
+  cv.width=q?h:w;cv.height=q?w:h;
+  ctx.save();ctx.translate(cv.width/2,cv.height/2);ctx.rotate(S.rot*Math.PI/180);ctx.drawImage(i,-w/2,-h/2,w,h);ctx.restore();
+}
+async function showPage(n){
+  if(!S.pdf) return;
+  n=Math.max(1,Math.min(S.pdf.numPages,n|0||1));
+  S.pnum=n;$('pnum').value=n;S.sel=null;drawSel();
+  const page=await S.pdf.getPage(n);
+  const base=page.getViewport({scale:1,rotation:(page.rotate+S.rot)%360});
+  const scale=Math.min(4,2000/base.width);
+  const vp=page.getViewport({scale,rotation:(page.rotate+S.rot)%360});
+  cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);
+  if(S.task){try{S.task.cancel();}catch(e){}}
+  S.task=page.render({canvasContext:ctx,viewport:vp});
+  try{await S.task.promise;}catch(e){if(e&&e.name==='RenderingCancelledException')return;throw e;}
+  S.page=page;S.viewport=vp;
+  const tc=await page.getTextContent();
+  S.hasLayer=tc.items.reduce((a,i)=>a+(i.str||'').trim().length,0)>40;
+  S.tc=tc;
+  msg('src-msg','Page '+n+' — '+(S.hasLayer?'texte intégré détecté (extraction instantanée).':'aucun texte intégré : l’OCR sera utilisé.'));
+  $('viewer').scrollTop=0;
+}
+
+/* ---------- sélection de zone ---------- */
+const stage=$('stage'), selEl=$('sel');
+let drag=null, zoneMode=false;
+function norm(e){const r=cv.getBoundingClientRect();return{x:Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),y:Math.min(1,Math.max(0,(e.clientY-r.top)/r.height))};}
+function drawSel(){
+  const s=S.sel;
+  if(!s){selEl.style.display='none';$('zclear').disabled=true;$('extract').textContent='Extraire la page';return;}
+  selEl.style.display='block';selEl.style.left=s.x*100+'%';selEl.style.top=s.y*100+'%';selEl.style.width=s.w*100+'%';selEl.style.height=s.h*100+'%';
+  $('zclear').disabled=false;$('extract').textContent='Extraire la zone';
+}
+stage.addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='mouse'&&!zoneMode) return;
+  if(e.button) return;
+  e.preventDefault();stage.setPointerCapture(e.pointerId);
+  drag=norm(e);S.sel={x:drag.x,y:drag.y,w:0,h:0};drawSel();
+});
+stage.addEventListener('pointermove',e=>{
+  if(!drag) return;const p=norm(e);
+  S.sel={x:Math.min(p.x,drag.x),y:Math.min(p.y,drag.y),w:Math.abs(p.x-drag.x),h:Math.abs(p.y-drag.y)};drawSel();
+});
+function endDrag(){if(!drag)return;drag=null;if(S.sel&&(S.sel.w<.02||S.sel.h<.01))S.sel=null;drawSel();}
+stage.addEventListener('pointerup',endDrag);stage.addEventListener('pointercancel',endDrag);
+$('zone').onclick=()=>{zoneMode=!zoneMode;$('zone').classList.toggle('on',zoneMode);stage.classList.toggle('zoning',zoneMode);
+  if(zoneMode) msg('src-msg','Mode zone : glissez le doigt sur la page pour encadrer la partie à lire. Touchez « Zone » de nouveau pour faire défiler.');};
+$('zclear').onclick=()=>{S.sel=null;drawSel();};
+function selPx(){const s=S.sel;return s?{x:s.x*cv.width,y:s.y*cv.height,w:s.w*cv.width,h:s.h*cv.height}:null;}
+function cropCanvas(maxDim,minW){
+  const r=selPx()||{x:0,y:0,w:cv.width,h:cv.height};
+  let k=1; if(maxDim) k=Math.min(1,maxDim/Math.max(r.w,r.h)); if(minW&&r.w*k<minW) k=Math.min(2.5,minW/r.w);
+  const c=document.createElement('canvas');c.width=Math.max(1,Math.round(r.w*k));c.height=Math.max(1,Math.round(r.h*k));
+  const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(cv,r.x,r.y,r.w,r.h,0,0,c.width,c.height);return c;
+}
+
+/* ---------- extraction du texte ---------- */
+function layerText(){return layerTextFor(S.tc,S.viewport,selPx());}
+/* le document vient-il d'une numérisation (texte mot à mot) ou d'un PDF numérique ? Décidé une fois par document. */
+async function layerKind(){
+  if(S.wordLayer!==undefined||!S.pdf) return;
+  const N=S.pdf.numPages;let chars=0,n=0;
+  for(let k=0;k<14;k++){
+    const tc=await (await S.pdf.getPage(1+Math.floor((N-1)*k/13))).getTextContent();
+    for(const it of tc.items){const t=(it.str||'').trim();if(t){chars+=t.length;n++;}}
+  }
+  S.wordLayer=n>0&&chars/n<8;
+}
+function layerTextFor(tc,vp,rect){
+  const items=[];
+  for(const it of tc.items){
+    if(!it.str||!it.str.trim()) continue;
+    const tx=pdfjsLib.Util.transform(vp.transform,it.transform);
+    const h=Math.hypot(tx[2],tx[3])||12, w=it.width*vp.scale, x=tx[4], y=tx[5];
+    const cx=x+w/2, cy=y-h/2;
+    if(rect&&(cx<rect.x||cx>rect.x+rect.w||cy<rect.y||cy>rect.y+rect.h)) continue;
+    items.push({x,y,w,h,s:it.str,f:it.fontName,rot:Math.abs(tx[1])>0.01});
+  }
+  // Couche de texte issue d'une numérisation (un élément par mot, positions bruitées) : lecture ligne à ligne, plus tolérante.
+  // PDF numérique (éléments = lignes ou morceaux de phrases) : analyse de la mise en page.
+  if(!S.wordLayer) return LAYOUT.layoutPage(items).text+'\n';
+  items.forEach(i=>{i.s=i.s.trim();});
+  items.sort((a,b)=>a.y-b.y);
+  const lines=[];
+  for(const it of items){
+    const L=lines[lines.length-1];
+    if(L&&Math.abs(it.y-L.y)<Math.max(it.h,L.h)*0.5){L.items.push(it);L.h=Math.max(L.h,it.h);}
+    else lines.push({y:it.y,h:it.h,items:[it]});
+  }
+  let out='',prev=null;
+  for(const L of lines){
+    L.items.sort((a,b)=>a.x-b.x);
+    let s='',p=null;
+    for(const it of L.items){
+      if(p){const gap=it.x-(p.x+p.w), cw=Math.max(4,p.w/Math.max(1,p.s.length)); s+=gap>cw*4?'    ':(gap>cw*0.15?' ':'');}
+      s+=it.s;p=it;
+    }
+    if(prev&&L.y-prev.y>Math.max(L.h,prev.h)*2.1) out+='\n';
+    out+=s+'\n';prev=L;
+  }
+  return out;
+}
+function ocrText(){return ocrCanvas(cropCanvas(2600,1400));}
+async function ocrCanvas(canvas){
+  await loadScript(LIBS.tess);
+  const lang=$('lang').value;
+  if(!S.workers[lang]){
+    msg('src-msg','Chargement du moteur OCR ('+lang+')… la première fois, quelques Mo sont téléchargés.');
+    S.workers[lang]=await Tesseract.createWorker(lang,1,{logger:m=>{if(m.status==='recognizing text')progress(m.progress);else if(typeof m.progress==='number')progress(m.progress*0.3);}});
+  }
+  msg('src-msg','Reconnaissance du texte…');
+  const {data}=await S.workers[lang].recognize(canvas);
+  return {text:data.text,conf:data.confidence};
+}
+async function extract(){
+  if(S.busy) return; S.busy=true;$('extract').disabled=true;progress(0.05);msg('src-msg','Extraction…');
+  try{
+    const method=$('method').value;
+    let text='',info='';
+    const canLayer=S.pdf&&S.hasLayer;
+    if(method==='layer'&&!canLayer) throw new Error('Cette page ne contient pas de texte intégré. Choisissez « OCR ».');
+    if(method==='layer'||(method==='auto'&&canLayer)){await layerKind();text=layerText();info='Texte intégré au PDF'+(S.wordLayer?' (numérisation)':' (mise en page analysée)');}
+    else{const r=await ocrText();text=r.text;info='OCR — confiance '+Math.round(r.conf)+' %';}
+    if(!text.trim()) throw new Error('Aucun texte trouvé dans '+(S.sel?'la zone':'la page')+'.');
+    $('raw').value=text;$('raw-d').open=true;
+    applyText(text,$('dest').value);
+    msg('src-msg',info+' · '+text.trim().split(/\s+/).length+' mots. Vérifiez la recette à droite'+(canLayer&&method!=='ocr'?' — si le texte est mauvais, essayez la méthode « OCR » ou une zone.':'.'),'ok');
+  }catch(e){msg('src-msg',e.message||String(e),'err');}
+  finally{S.busy=false;$('extract').disabled=false;progress(null);}
+}
+
+/* ---------- champs de la recette ---------- */
+const F=['name','desc','yield','prep','cook','total','ing','steps','notes','cats','tags','source'];
+const fv=k=>$('f-'+k).value;
+function setF(k,v){$('f-'+k).value=v==null?'':v;}
+function appendF(k,v){const e=$('f-'+k);e.value=(e.value.trim()?e.value.replace(/\s+$/,'')+'\n':'')+v;}
+function showFixes(log){const e=$('fix-msg');if(log&&log.length){e.style.display='block';e.textContent='Conversions corrigées — à vérifier :\n• '+log.join('\n• ');}else e.style.display='none';}
+function applyText(text,dest){
+  const autofix=$('autofix').checked, log=[];
+  if(dest==='auto'){
+    const r=RP.parseRecipe(text,{autofix});
+    setF('name',r.name);setF('desc',r.desc);setF('yield',r.yield);setF('prep',r.prep);setF('cook',r.cook);setF('total',r.total);
+    setF('ing',r.ing.join('\n'));setF('steps',r.steps.join('\n'));setF('notes',r.notes);
+    showFixes(r.fixes);
+    if(S.pdf){const b=$('b-book').value.trim()||fv('source').replace(/,?\s*p\.\s*\d*\s*$/,'').trim();setF('source',(b?b+', ':'')+'p. '+S.pnum);setF('tags',withBook(fv('tags')));
+      if(!S.editing&&!S.sel&&$('m-img').checked){const n=S.pnum;pickPhotoPage(n).then(m=>m?pageJpeg(m):null).then(b=>{if(b&&S.pnum===n&&!S.editing)setPhoto(b);}).catch(()=>{});}}
+  }else if(dest==='name'){
+    setF('name',RP.sentenceCase(RP.cleanLines(text).filter(Boolean).join(' ')).replace(/^(.)(.*)$/,(m,a,b)=>a.toUpperCase()+b));
+  }else if(dest==='ing'){appendF('ing',RP.parseIngredients(text,log,autofix).join('\n'));showFixes(log);}
+  else if(dest==='steps'){appendF('steps',RP.parseSteps(text).join('\n'));}
+  else if(dest==='notes'){appendF('notes',RP.sentenceCase(RP.flat(RP.cleanLines(text).join('\n'))));}
+  else if(dest==='desc'){setF('desc',RP.sentenceCase(RP.flat(RP.cleanLines(text).join('\n'))));}
+  changed();
+}
+function recipe(){
+  const r={};F.forEach(k=>r[k]=fv(k));
+  r.ing=r.ing.split('\n');r.steps=r.steps.split('\n');return r;
+}
+function changed(){
+  $('json').textContent=JSON.stringify(RP.buildLD(recipe(),{inlineNotes:true}),null,2);
+  const d={};F.forEach(k=>d[k]=fv(k));store('rt-draft',d);
+  if(S.editing){F.forEach(k=>S.editing.r[k]=fv(k));renderBatch();saveBatch();}
+}
+document.querySelectorAll('[data-f]').forEach(e=>e.addEventListener('input',changed));
+$('reset').onclick=()=>{S.editing=null;$('edit-tag').textContent='';renderBatch();F.forEach(k=>{if(k!=='source'&&k!=='cats'&&k!=='tags')setF(k,'');});showFixes(null);setPhoto(null);msg('m-msg','');changed();window.scrollTo({top:0,behavior:'smooth'});};
+$('reparse').onclick=()=>{if($('raw').value.trim())applyText($('raw').value,$('dest').value);};
+
+/* ---------- photo ---------- */
+function setPhoto(blob){
+  S.photo=blob;const p=$('photo-prev');
+  if(blob){p.src=URL.createObjectURL(blob);p.style.display='block';$('photo-x').style.display='';}
+  else{p.removeAttribute('src');p.style.display='none';$('photo-x').style.display='none';}
+}
+$('photo-btn').onclick=()=>cropCanvas(1600).toBlob(b=>{setPhoto(b);if(S.editing&&!S.editing.epub){S.editing.photoBlob=b;renderBatch();}},'image/jpeg',0.86);
+$('photo-x').onclick=()=>{setPhoto(null);if(S.editing){S.editing.photoBlob=null;S.editing.photoPage=0;S.editing.img=null;renderBatch();saveBatch();}};
+
+/* ---------- Mealie ---------- */
+function base(){return $('m-url').value.trim().replace(/\/+$/,'');}
+/* La page est-elle servie par un serveur qui relaie /api vers Mealie (même origine, donc pas de CORS) ? */
+async function probeSame(){
+  const loop=/^(127\.0\.0\.1|localhost)$/.test(location.hostname);
+  if(!/^https?:$/.test(location.protocol)){S.same=false;S.relay='local';return false;}
+  try{
+    const r=await fetch('/api/app/about',{cache:'no-store'});
+    if(r.ok){const j=await r.json().catch(()=>null);
+      if(j&&j.version){S.same=true;S.relay='ok';S.mver=j.version;
+        $('m-url-lab').textContent='Adresse publique de Mealie (facultatif, pour les liens)';return true;}
+      S.relay='autre';}
+    else S.relay=String(r.status);
+  }catch(e){S.relay='muet';}
+  if(loop) S.relay='local';   // visionneuse de fichiers du téléphone (127.0.0.1)
+  S.same=false;return false;
+}
+function netHelp(direct){
+  const target=(base().replace(/^https?:\/\//,'')||'IP_DE_MEALIE:9000');
+  const fix='\n→ Sur l’hôte Proxmox : bash install.sh update --mealie '+target+'\n→ Puis : bash install.sh status';
+  if(S.relay==='local') return 'Cette page est ouverte comme fichier local sur l’appareil : le navigateur bloque alors l’accès à Mealie (CORS), même sur le réseau local.\n→ Ouvrez plutôt la page servie par le conteneur : http://ADRESSE_DU_CONTENEUR (affichée à la fin de l’installation, ou par « status »).';
+  if(/^50[234]$/.test(S.relay)) return 'La page vient bien du conteneur, mais son relais ne joint pas Mealie (erreur '+S.relay+') : l’adresse de Mealie enregistrée dans le conteneur est fausse, ou Mealie est arrêté.'+fix;
+  if(S.relay==='404'||S.relay==='autre') return 'Le serveur qui fournit cette page ne relaie pas /api vers Mealie'+(S.relay==='404'?' (erreur 404)':'')+'.'+fix;
+  if(S.relay==='muet') return 'Le serveur qui fournit cette page ne répond plus. Vérifiez que le conteneur du transposeur est démarré.';
+  return 'Le relais de ce serveur a répondu « '+S.relay+' » et l’accès direct à '+(direct||'Mealie')+' est bloqué par le navigateur (CORS).'+fix;
+}
+async function api(path,opts){
+  opts=opts||{};
+  const tok=$('m-token').value.trim();
+  if(!S.same) await probeSame();
+  const b=S.same?'':base();
+  if(!tok) throw new Error('Indiquez le jeton API.');
+  if(!S.same&&!b){const er=new Error(netHelp(''));er.net=true;throw er;}
+  let res;
+  try{res=await fetch(b+path,Object.assign({},opts,{headers:Object.assign({Authorization:'Bearer '+tok,Accept:'application/json'},opts.headers||{})}));}
+  catch(e){const er=new Error(S.same?'Le conteneur ne répond plus (connexion coupée pendant l’envoi). Réessayez.':netHelp(b));er.net=true;throw er;}
+  if(!res.ok){let t='';try{t=(await res.text()).slice(0,300);}catch(e){}
+    if(res.status===401) throw new Error('Jeton API refusé (401). Touchez « Afficher » pour vérifier qu’il est complet, sans espace.');
+    if(S.same&&/^50[234]$/.test(String(res.status))){S.relay=String(res.status);S.same=false;const er=new Error(netHelp(''));er.net=true;throw er;}
+    throw new Error('Erreur '+res.status+(t?' — '+t:''));}
+  const ct=res.headers.get('content-type')||'';
+  return ct.includes('json')?res.json():res.text();
+}
+$('m-show').onclick=()=>{const t=$('m-token'),show=t.type==='password';t.type=show?'text':'password';
+  $('m-show').textContent=show?'Masquer':'Afficher';$('m-show').setAttribute('aria-pressed',String(show));};
+function saveSettings(){if($('m-save').checked)store('rt-mealie',{url:$('m-url').value,token:$('m-token').value});else store('rt-mealie',null);}
+['m-url','m-token','m-save'].forEach(id=>$(id).addEventListener('change',saveSettings));
+$('test').onclick=async()=>{
+  msg('m-msg','Test…');
+  try{const u=await api('/api/users/self');S.group=u.groupSlug||null;msg('m-msg','Connecté : '+(u.fullName||u.username||'OK')+(S.same?' — par le relais de ce serveur (Mealie '+S.mver+').':' — en accès direct.'),'ok');}
+  catch(e){msg('m-msg',e.message,'err');}
+};
+/* ---------- doublons ---------- */
+const J={'Content-Type':'application/json'};
+const rurl=slug=>'/api/recipes/'+encodeURIComponent(slug);
+const bookOf=src=>(src||'').replace(/,?\s*p\.\s*\d+\s*$/,'').trim();
+/* identité d'une recette : sa source (livre + page) ; sans page, livre + titre */
+function recipeKey(r,origName){
+  const src=(r.source||'').trim();
+  return /p\.\s*\d+\s*$/.test(src)?RP.keyOf(src):RP.keyOf(src)+'/'+RP.keyOf(origName||r.name);
+}
+async function loadIndex(force){
+  if(S.index&&!force) return S.index;
+  const idx=new Map();let page=1,tp=1;
+  do{
+    const d=await api('/api/recipes?page='+page+'&perPage=500&orderBy=name&orderDirection=asc');
+    tp=d.total_pages||d.totalPages||1;
+    for(const it of d.items||[]){const k=RP.keyOf(it.name||'');if(!idx.has(k))idx.set(k,[]);idx.get(k).push(it.slug);}
+    page++;
+  }while(page<=tp&&page<=40);
+  S.index=idx;return idx;
+}
+function indexAdd(name,slug){if(!S.index)return;const k=RP.keyOf(name);if(!S.index.has(k))S.index.set(k,[]);if(!S.index.get(k).includes(slug))S.index.get(k).push(slug);}
+function ingSim(a,b){
+  const A=new Set(a.map(RP.keyOf).filter(Boolean)),B=new Set(b.map(RP.keyOf).filter(Boolean));
+  if(!A.size||!B.size) return 0;let n=0;A.forEach(x=>{if(B.has(x))n++;});return n/(A.size+B.size-n);
+}
+/* cherche dans Mealie : la même recette (même source, ou mêmes ingrédients), ou une autre recette du même nom */
+async function findExisting(r,key,names){
+  const idx=await loadIndex(), mem=store('rt-sent')||{}, slugs=new Set();
+  if(mem[key]) slugs.add(mem[key]);
+  for(const n of names) for(const sl of idx.get(RP.keyOf(n))||[]) slugs.add(sl);
+  let homonym=null;
+  for(const slug of slugs){
+    let e;try{e=await api(rurl(slug));}catch(x){continue;}
+    const ek=(e.extras||{}).transposeur_cle;
+    if(ek===key) return {same:e};
+    const sim=ingSim(r.ing.filter(l=>!/^#\s/.test(l)),(e.recipeIngredient||[]).map(i=>i.originalText||i.display||i.note||''));
+    if(ek){ if(sim>=0.75&&RP.keyOf(bookOf((e.extras||{}).transposeur_source))===RP.keyOf(bookOf(r.source))) return {same:e}; if(!homonym) homonym=e; continue; }
+    if(!names.some(n=>RP.keyOf(n)===RP.keyOf(e.name||''))) continue;
+    if(sim>=0.75) return {same:e};
+    if(!homonym) homonym=e;
+  }
+  return {same:null,homonym};
+}
+async function createViaScraper(r){
+  let slug=await api('/api/recipes/create/html-or-json',{method:'POST',headers:J,
+    body:JSON.stringify({includeTags:true,data:JSON.stringify(RP.buildLD(r,{inlineNotes:false,inlineSource:true}))})});
+  return typeof slug==='string'?slug.replace(/^"|"$/g,''):slug;
+}
+/* Envoie une recette. Résultat : {slug, action:'created'|'updated'|'skipped', renamed, warn, url} */
+async function sendRecipe(r,photo,assets){
+  const warn=[], policy=$('m-dup').value, key=recipeKey(r);
+  let slug, action='created', renamed='', existing=null;
+  r=Object.assign({},r);
+  if(policy!=='new'){
+    let f=await findExisting(r,key,[r.name]);
+    if(!f.same&&f.homonym&&$('m-homo').checked){
+      const book=bookOf(r.source), other=bookOf((f.homonym.extras||{}).transposeur_source||'');
+      const suffix=(book&&RP.keyOf(book)!==RP.keyOf(other))?book:(r.source||'').trim();
+      if(suffix){
+        const nn=r.name.trim()+' ('+suffix+')';
+        const f2=await findExisting(r,key,[nn]);   // déjà envoyée sous ce titre complété ?
+        r.name=nn;renamed=nn;
+        if(f2.same) f=f2;
+      }
+    }
+    existing=f.same;
+  }
+  if(existing&&policy==='skip'){
+    const m=store('rt-sent')||{};m[key]=existing.slug;store('rt-sent',m);
+    return {slug:existing.slug,action:'skipped',renamed:'',warn,url:recipeLink(existing.slug)};
+  }
+  if(existing){
+    // mise à jour : Mealie structure une copie temporaire, on reporte son contenu sur la recette existante
+    action='updated';slug=existing.slug;
+    const tmp=await createViaScraper(r);
+    try{
+      const t=await api(rurl(tmp));
+      const tagIds=new Set((existing.tags||[]).map(x=>x.id));
+      // si la recette existante porte un titre complété par sa source, on le garde
+      const keep=(existing.name||'').startsWith(r.name.trim()+' (')||!r.name.trim();
+      const body={name:keep?existing.name:r.name.trim(),description:t.description,recipeServings:t.recipeServings,recipeYield:t.recipeYield,recipeYieldQuantity:t.recipeYieldQuantity,
+        totalTime:t.totalTime,prepTime:t.prepTime,performTime:t.performTime,
+        recipeIngredient:(t.recipeIngredient||[]).map(i=>{const o=Object.assign({},i);delete o.referenceId;return o;}),
+        recipeInstructions:(t.recipeInstructions||[]).map(i=>{const o=Object.assign({},i);delete o.id;return o;}),
+        tags:(existing.tags||[]).concat((t.tags||[]).filter(x=>!tagIds.has(x.id))),
+        recipeCategory:(existing.recipeCategory||[]).concat((t.recipeCategory||[]).filter(x=>!(existing.recipeCategory||[]).some(y=>y.id===x.id)))};
+      let up;
+      try{up=await api(rurl(slug),{method:'PATCH',headers:J,body:JSON.stringify(body)});}
+      catch(e){ if(!/already exists/i.test(e.message)) throw e;   // le nouveau titre est pris par une autre recette : on garde l'ancien
+        body.name=existing.name;up=await api(rurl(slug),{method:'PATCH',headers:J,body:JSON.stringify(body)});warn.push('titre inchangé (« '+r.name.trim()+' » est déjà pris)'); }
+      if(up&&up.slug) slug=up.slug;
+    }finally{try{await api(rurl(tmp),{method:'DELETE'});}catch(e){warn.push('copie temporaire « '+tmp+' » à supprimer à la main');}}
+  }else{
+    slug=await createViaScraper(r);
+  }
+  if(photo){
+    try{const ext=((photo.type||'').split('/')[1]||'jpg').replace('jpeg','jpg');
+      const fd=new FormData();fd.append('image',photo,'photo.'+ext);fd.append('extension',ext);
+      await api(rurl(slug)+'/image',{method:'PUT',body:fd});}
+    catch(e){warn.push('photo non envoyée ('+e.message.split('\n')[0]+')');}
+  }
+  let bad=0,last='',sentAssets=0;
+  const have=new Set(((existing&&existing.assets)||[]).map(x=>x.name));
+  for(const a of assets||[]){
+    if(have.has(a.name)){sentAssets++;continue;}
+    try{const fd=new FormData();fd.append('name',a.name);fd.append('icon','mdi-file-image');fd.append('extension','jpg');fd.append('file',a.blob,'page.jpg');
+      await api(rurl(slug)+'/assets',{method:'POST',body:fd});sentAssets++;}
+    catch(e){bad++;last=e.message.split('\n')[0];}
+  }
+  if(bad) warn.push(bad+' pièce'+(bad>1?'s':'')+' jointe'+(bad>1?'s':'')+' non envoyée'+(bad>1?'s':'')+' ('+last+')');
+  // notes, identité (pour reconnaître la recette plus tard) et affichage des pièces jointes
+  try{
+    const cur=await api(rurl(slug));
+    const notes=(cur.notes||[]).filter(n=>!/^(Notes|Source)$/.test(n.title||''));
+    if(r.notes.trim()) notes.push({title:'Notes',text:r.notes.trim()});
+    const body={notes,extras:Object.assign({},cur.extras||{},{transposeur_cle:key,transposeur_source:(r.source||'').trim()})};
+    const titles=list=>{const t={};let i=0,h='';for(const l of list){const x=l.trim();if(!x)continue;if(/^#\s/.test(x)){h=x.replace(/^#\s*/,'');continue;}if(h){t[i]=h;h='';}i++;}return t;};
+    const ti=titles(r.ing), ts=titles(r.steps);
+    if(Object.keys(ti).length&&(cur.recipeIngredient||[]).length) body.recipeIngredient=cur.recipeIngredient.map((x,i)=>Object.assign({},x,{title:ti[i]||null}));
+    if(Object.keys(ts).length&&(cur.recipeInstructions||[]).length) body.recipeInstructions=cur.recipeInstructions.map((x,i)=>Object.assign({},x,{title:ts[i]||''}));
+    if(sentAssets||(cur.assets||[]).length) body.settings=Object.assign({},cur.settings||{},{showAssets:true});
+    await api(rurl(slug),{method:'PATCH',headers:J,body:JSON.stringify(body)});
+  }catch(e){warn.push('notes / repère de source non enregistrés ('+e.message.split('\n')[0]+')');}
+  const m=store('rt-sent')||{};m[key]=slug;store('rt-sent',m);indexAdd(r.name,slug);
+  if(!S.group){try{S.group=(await api('/api/users/self')).groupSlug||null;}catch(e){}}
+  return {slug,action,renamed,warn,url:recipeLink(slug)};
+}
+function recipeLink(slug){return base()?base()+(S.group?'/g/'+S.group+'/r/'+slug:''):'';}
+/* images de la source à joindre : page du PDF (et voisines), ou la photo d'origine */
+const toJpeg=(c,q)=>new Promise(res=>c.toBlob(res,'image/jpeg',q||0.8));
+async function pageJpeg(n){
+  const page=await S.pdf.getPage(n), base=page.getViewport({scale:1}), vp=page.getViewport({scale:Math.min(3,1500/base.width)});
+  const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);
+  await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+  const b=await toJpeg(c);c.width=c.height=0;return b;
+}
+/* part de la page couverte par de l'image (photo) plutôt que par du papier blanc */
+async function inkScore(n){
+  if(S.pscore.has(n)) return S.pscore.get(n);
+  const page=await S.pdf.getPage(n), base=page.getViewport({scale:1}), vp=page.getViewport({scale:110/base.width});
+  const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);
+  const x=c.getContext('2d',{willReadFrequently:true});
+  await page.render({canvasContext:x,viewport:vp}).promise;
+  const d=x.getImageData(0,0,c.width,c.height).data;let k=0;
+  for(let i=0;i<d.length;i+=4){const mx=Math.max(d[i],d[i+1],d[i+2]),mn=Math.min(d[i],d[i+1],d[i+2]);if(mx<205||mx-mn>38)k++;}
+  const sc=k/(d.length/4);S.pscore.set(n,sc);return sc;
+}
+/* page à utiliser comme photo de la recette de la page n : la page d'en face si c'est une photo, sinon une voisine, sinon la page elle-même */
+const isRecipePage=m=>S.batch.some(i=>!i.epub&&(i.pages?i.pages.includes(m):i.page===m));
+async function pickPhotoPage(n,it){
+  if(!S.pdf) return 0;
+  const N=S.pdf.numPages, ta=+$('t-from').value||0, tb=+$('t-to').value||ta;
+  const free=m=>m>=1&&m<=N&&!(ta&&m>=ta&&m<=tb)&&!isRecipePage(m);
+  if(it&&it.multi){
+    // recette délimitée par la table : page photo juste après, sinon juste avant, sinon la page la plus illustrée de la recette
+    const pp=it.pages, taken=new Set(S.batch.filter(i=>i!==it&&i.photoPage).map(i=>i.photoPage));
+    for(const m of [pp[pp.length-1]+1,pp[0]-1]) if(free(m)&&!taken.has(m)&&(await pageText(m)).trim().length<200&&await inkScore(m)>=0.3) return m;
+    let best=0,bs=0.55;for(const m of pp){const sc=await inkScore(m);if(sc>=bs){bs=sc;best=m;}}
+    return best;
+  }
+  const face=((n-(S.tocOff||0))%2===0)?n+1:n-1, other=face===n+1?n-1:n+1, beyond=other+(other-n);
+  const light=async m=>(await pageText(m)).trim().length<200;
+  if(free(face)){const sc=await inkScore(face);if(sc>=0.45||(sc>=0.1&&await light(face))) return face;}
+  // l'autre voisine ne sert que si elle n'est pas la page d'en face d'une autre recette
+  else if(free(other)&&!S.batch.some(i=>!i.epub&&i.page===beyond)&&await light(other)&&await inkScore(other)>=0.6) return other;
+  if(await inkScore(n)>=0.5) return n;
+  return 0;
+}
+/* cherche les photos en arrière-plan, sans bloquer la liste */
+async function pickPhotosBg(){
+  const run=S.pickRun=(S.pickRun||0)+1, pdf=S.pdf;
+  const todo=S.batch.filter(i=>!i.epub&&i.status!=='ok'&&i.photoPage===undefined);
+  if(!pdf||!todo.length||!$('m-img').checked) return;
+  for(let k=0;k<todo.length;k++){
+    if(S.pickRun!==run||S.pdf!==pdf) return;
+    msg('ph-msg','Recherche des photos du livre… '+(k+1)+' / '+todo.length);
+    if(todo[k].photoPage===undefined){try{todo[k].photoPage=await pickPhotoPage(todo[k].page,todo[k]);}catch(e){todo[k].photoPage=0;}}
+    if(k%4===3) renderBatch();
+  }
+  const n=S.batch.filter(i=>!i.epub&&i.photoPage).length;
+  msg('ph-msg',n+' recette'+(n>1?'s':'')+' avec une photo du livre (indiquée dans la liste). Touchez une recette pour voir sa photo ou la changer.','ok');
+  renderBatch();saveBatch();
+}
+async function itemPhoto(it){
+  if(it.photoBlob) return it.photoBlob;
+  if(!$('m-img').checked||!S.pdf) return null;
+  if(it.photoPage===undefined){try{it.photoPage=await pickPhotoPage(it.page,it);}catch(e){it.photoPage=0;}}
+  if(!it.photoPage||it.photoPage>S.pdf.numPages) return null;
+  return pageJpeg(it.photoPage);
+}
+async function sourceAssets(n,it){
+  const mode=$('m-att').value, out=[];
+  if(mode==='none') return out;
+  if(S.pdf&&n&&n<=S.pdf.numPages){
+    const pp=(it&&it.pages&&it.pages.length?it.pages:[n]).filter(m=>m<=S.pdf.numPages);
+    for(const m of pp) out.push({name:'Page d’origine (p. '+m+' du PDF)',blob:await pageJpeg(m)});
+    if(mode==='near'){
+      const ta=+$('t-from').value||0, tb=+$('t-to').value||ta;
+      for(const m of [pp[0]-1,pp[pp.length-1]+1]){
+        if(m<1||m>S.pdf.numPages||(ta&&m>=ta&&m<=tb)||isRecipePage(m)) continue;
+        if(it&&it.multi&&(await pageText(m)).trim().length>=200) continue;
+        out.push({name:'Page voisine (p. '+m+' du PDF)',blob:await pageJpeg(m)});
+      }
+    }
+  }else if(S.img&&!n){
+    const k=Math.min(1,1800/Math.max(cv.width,cv.height)), c=document.createElement('canvas');c.width=Math.round(cv.width*k);c.height=Math.round(cv.height*k);
+    c.getContext('2d').drawImage(cv,0,0,c.width,c.height);out.push({name:'Photo d’origine',blob:await toJpeg(c,0.85)});
+  }
+  return out;
+}
+const OLD_API='\nCe point d’accès (/api/recipes/create/html-or-json) existe dans Mealie 2.x et plus récent ; utilisez l’import manuel sinon.';
+$('send').onclick=async()=>{
+  const r=recipe();
+  if(!r.name.trim()){msg('m-msg','Donnez un titre à la recette.','err');$('f-name').focus();return;}
+  $('send').disabled=true;msg('m-msg','Création de la recette…');
+  try{
+    let att=[];
+    try{att=(S.editing&&S.editing.epub)?[]:await sourceAssets(S.editing?S.editing.page:(S.pdf?S.pnum:0),S.editing);}catch(e){}
+    S.index=null;
+    const o=await sendRecipe(r,S.photo,att);
+    const m=$('m-msg');m.className='msg '+(o.warn.length?'warn':'ok');
+    m.textContent={created:'Recette créée : ',updated:'Recette déjà présente, mise à jour : ',skipped:'Recette déjà présente dans Mealie, rien n’a été changé : '}[o.action];
+    const a=document.createElement(o.url?'a':'b');if(o.url){a.href=o.url;a.target='_blank';a.rel='noopener';}a.textContent=o.slug;a.style.color='inherit';m.appendChild(a);
+    if(o.renamed) m.appendChild(document.createTextNode('\nUne autre recette portait déjà ce nom : celle-ci s’appelle « '+o.renamed+' ».'));
+    if(o.warn.length) m.appendChild(document.createTextNode('\nMais : '+o.warn.join(' ; ')));
+    if(S.editing){S.editing.act=o.action;S.editing.status='ok';S.editing.slug=o.slug;renderBatch();saveBatch();}
+  }catch(e){
+    msg('m-msg',/^Erreur 40[45]/.test(e.message)?e.message+OLD_API:e.message,'err');
+  }finally{$('send').disabled=false;}
+};
+
+/* ---------- lot : livre entier ---------- */
+function bookTag(){return $('b-book').value.replace(/,/g,' ').replace(/\s+/g,' ').trim();}
+function withBook(tags){const b=bookTag(),l=(tags||'').split(',').map(x=>x.trim()).filter(Boolean);
+  if(b&&!l.some(x=>x.toLowerCase()===b.toLowerCase()))l.push(b);return l.join(', ');}
+function toRec(r){const o=Object.assign({},r);o.tags=withBook(r.tags);o.ing=(r.ing||'').split('\n');o.steps=(r.steps||'').split('\n');return o;}
+function saveBatch(){store('rt-batch',{book:$('b-book').value,items:S.batch.map(i=>Object.assign({},i,{text:undefined,photoBlob:undefined}))});}
+const lab=it=>it.label||('p. '+it.page);
+function count(s){return (s||'').split('\n').filter(x=>x.trim()&&!/^#\s/.test(x)).length;}
+function renderBatch(){
+  const box=$('b-list');box.textContent='';
+  S.batch.forEach(it=>{
+    const row=document.createElement('div');row.className='brow';
+    const cb=document.createElement('input');cb.type='checkbox';cb.checked=it.sel;cb.disabled=it.status==='ok';cb.setAttribute('aria-label','Inclure');
+    cb.onchange=()=>{it.sel=cb.checked;saveBatch();updateSendLabel();};
+    const bt=document.createElement('button');if(S.editing===it)bt.className='cur';
+    const t=document.createElement('b');t.textContent=(it.status!=='ok'&&RP.doubtfulTitle(it.r.name)?'⚠ ':'')+(it.r.name.trim()||'Sans titre');
+    const sm=document.createElement('small');sm.textContent=lab(it)+(it.img||it.photoBlob?' · photo':it.photoPage?' · photo p. '+it.photoPage:'')+' · '+count(it.r.ing)+' ingr. · '+count(it.r.steps)+' étapes';
+    bt.append(t,sm);bt.onclick=()=>editItem(it);
+    const st=document.createElement('span');st.className='st '+(it.status==='ok'?(it.warn?'warn':'ok'):it.status==='err'?'err':'');
+    st.textContent=it.status==='ok'?(({updated:'✓ mise à jour',skipped:'= déjà présente'})[it.act]||'✓ créée')+(it.warn?' — '+it.warn:''):it.status==='err'?'✗ '+(it.err||''):it.status==='run'?'…':'';
+    row.append(cb,bt,st);box.appendChild(row);
+  });
+  $('b-actions').style.display=S.batch.length?'flex':'none';
+  updateSendLabel();
+}
+function updateSendLabel(){const n=S.batch.filter(i=>i.sel&&i.status!=='ok').length;$('b-send').textContent='Envoyer '+n+' recette'+(n>1?'s':'')+' dans Mealie';$('b-send').disabled=!n;}
+function editItem(it){
+  S.editing=null;F.forEach(k=>setF(k,it.r[k]||''));showFixes(it.fixes);setPhoto(null);
+  S.editing=it;$('edit-tag').textContent='· lot, '+lab(it);changed();
+  if(it.epub){
+    if(it.text){$('raw').value=it.text;$('raw-d').open=true;}
+    if(it.img&&S.epub) S.epub.blob(it.img).then(b=>{if(S.editing===it)setPhoto(b);}).catch(()=>{});
+  }else if(S.pdf&&it.page<=S.pdf.numPages){
+    showPage(it.page).catch(()=>{});
+    itemPhoto(it).then(b=>{if(S.editing===it&&b)setPhoto(b);}).catch(()=>{});
+  }
+  $('rec-card').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function pageText(n){
+  const method=$('method').value, ck=method+'|'+$('lang').value+'|'+n;
+  if(S.tcache.has(ck)) return S.tcache.get(ck);
+  const t=await pageTextRaw(n,method);S.tcache.set(ck,t);return t;
+}
+async function pageTextRaw(n,method){
+  await layerKind();
+  const page=await S.pdf.getPage(n), base=page.getViewport({scale:1}), vp=page.getViewport({scale:Math.min(4,2000/base.width)});
+  const tc=await page.getTextContent();
+  const has=tc.items.reduce((a,i)=>a+(i.str||'').trim().length,0)>40;
+  if(method!=='ocr'&&has) return layerTextFor(tc,vp,null);
+  if(method==='layer'||(method==='auto'&&S.layerOnly)) return '';
+  const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);
+  await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+  const t=(await ocrCanvas(c)).text;progress(null);return t;
+}
+/* --- table des matières (PDF) --- */
+async function findToc(quiet){
+  if(!S.pdf) return;
+  const N=S.pdf.numPages, pdf=S.pdf, cnt=[], kw=[], stopPg=[], idx=[];
+  if(!quiet) msg('t-msg','Recherche de la table…');
+  for(let n=1;n<=N;n++){
+    if(S.pdf!==pdf) return;
+    const tc=await (await pdf.getPage(n)).getTextContent();
+    const txt=tc.items.reduce((x,i)=>x+(i.str||'').trim().length,0)>40?await pageText(n):'';
+    cnt[n]=RP.tocEntries(txt).length;
+    idx[n]=/(^|\n)\s*index\b/i.test(txt.slice(0,300));
+    stopPg[n]=/cr[ée]dits|remerciements|copyright|©/i.test(txt.slice(0,400));
+    kw[n]=/table\s+des\s+mati[èe]res|sommaire|index\s+des\s+recettes|liste\s+des\s+recettes|table\s+of\s+contents/i.test(txt);
+  }
+  let st=0;
+  for(let n=1;n<=N&&!st;n++) if(kw[n]&&cnt[n]>=5) st=n;
+  for(let n=1;n<=N&&!st;n++) if(cnt[n]>=5&&idx[n]) st=n;
+  for(let n=1;n<=N&&!st;n++) if(cnt[n]>=12) st=n;
+  if(!st){msg('t-msg','Aucune table des matières repérée automatiquement. Indiquez ses pages à la main, ou décochez l’option.','warn');return;}
+  let en=st;while(en<N&&!stopPg[en+1]&&(cnt[en+1]>=5||(en+2<=N&&cnt[en+2]>=5&&!stopPg[en+2]))) en++;
+  $('t-from').value=st;$('t-to').value=en;
+  msg('t-msg','Table repérée : pages '+st+' à '+en+' du PDF. Corrigez au besoin avant d’analyser.','ok');
+}
+$('t-find').onclick=()=>findToc(false).catch(e=>msg('t-msg',e.message||String(e),'err'));
+async function readToc(){
+  const N=S.pdf.numPages, a=+$('t-from').value, b=Math.min(N,+$('t-to').value||a);
+  if(!a||a<1||a>N) return null;
+  const by={};
+  for(let n=a;n<=b;n++) for(const e of RP.tocEntries(await pageText(n))){
+    const k=RP.keyOf(e.title), o=by[k]||(by[k]={title:e.title,pages:{}});
+    if(e.title.split(' ').length>o.title.split(' ').length) o.title=e.title;
+    o.pages[e.page]=(o.pages[e.page]||0)+1;
+  }
+  return Object.values(by);
+}
+
+$('b-scan').onclick=async()=>{
+  if(S.epub&&!S.busy) return scanEpub();
+  if(!S.pdf||S.busy) return;
+  const N=S.pdf.numPages, a=Math.max(1,Math.min(N,+$('b-from').value||1)), b=Math.max(a,Math.min(N,+$('b-to').value||N));
+  S.busy=true;S.stop=false;$('b-scan').disabled=true;$('extract').disabled=true;$('b-stop').style.display='';
+  const sent=new Set(S.batch.filter(i=>i.status==='ok'&&!(i.pages&&i.pages.length>1)&&!i.multi).map(i=>i.page));
+  const sentKeys=new Set(S.batch.filter(i=>i.status==='ok').map(i=>i.page+'|'+RP.keyOf(i.r.name)));
+  S.batch=S.batch.filter(i=>i.status==='ok'||i.page<a||i.page>b);
+  if(S.editing&&!S.batch.includes(S.editing)){S.editing=null;$('edit-tag').textContent='';}
+  const book=$('b-book').value.trim(), autofix=$('autofix').checked, recs={}, texts={};
+  const docId=S.pdf.fingerprints?S.pdf.fingerprints[0]:null;
+  let ord=0;
+  // printed : numéro de page imprimé (si la table des matières a permis de le connaître), sinon page du PDF
+  const add=(n,r,pages,printed)=>{
+    const pp=pages&&pages.length?pages:[n], pr=printed||n;
+    const label=printed&&printed!==n?'p. '+printed+' (PDF '+pp[0]+(pp.length>1?'–'+pp[pp.length-1]:'')+')':(pp.length>1?'p. '+pp[0]+'–'+pp[pp.length-1]:'');
+    S.batch.push({page:n,pages:pp,ord:ord++,label,doc:docId,sel:true,status:'',fixes:r.fixes,r:{name:r.name,desc:r.desc,yield:r.yield,prep:r.prep,cook:r.cook,total:r.total,
+      ing:r.ing.join('\n'),steps:r.steps.join('\n'),notes:r.notes,cats:fv('cats'),tags:withBook(''),source:(book?book+', ':'')+'p. '+pr}});
+  };
+  try{
+    // si le PDF contient déjà son texte, les pages sans texte (photos) sont sautées au lieu d'être océrisées
+    let withText=0,tested=0;
+    for(let k=0;k<12;k++){const n=a+Math.floor((b-a)*k/11);tested++;
+      const tc=await (await S.pdf.getPage(n)).getTextContent();if(tc.items.reduce((x,i)=>x+(i.str||'').trim().length,0)>40)withText++;}
+    S.layerOnly=withText>=tested/4;
+    let toc=null;
+    if($('t-use').checked){
+      msg('b-msg','Lecture de la table des matières…');
+      toc=await readToc();
+      if(!toc||toc.length<3){toc=null;msg('t-msg','Table des matières introuvable ou illisible aux pages indiquées : analyse sans table.','warn');}
+    }
+    let found=0;
+    for(let n=a;n<=b&&!S.stop;n++){
+      progress((n-a)/(b-a+1),'b-prog');msg('b-msg','Page '+n+' / '+b+'…');
+      try{texts[n]=await pageText(n);recs[n]=RP.parseRecipe(texts[n],{autofix});}catch(e){msg('b-msg','Page '+n+' : '+(e.message||e),'err');throw e;}
+      if(n%25===0) await new Promise(r=>setTimeout(r));
+    }
+    const ok=(n,rel)=>recs[n]&&!sent.has(n)&&RP.looksLikeRecipe(recs[n],rel);
+    if(!toc){
+      for(let n=a;n<=b;n++) if(ok(n)){add(n,recs[n]);found++;}
+      msg('b-msg',found+' recette'+(found>1?'s':'')+' détectée'+(found>1?'s':'')+' (pages '+a+' à '+b+(S.stop?', interrompu':'')+'). Touchez une recette pour la vérifier et la corriger ; ⚠ = titre à revoir ; décochez celles à exclure.','ok');
+    }else{
+      // décalage entre numéro imprimé et page du PDF
+      let off=$('t-off').value.trim()===''?null:+$('t-off').value;S.tocOff=0;
+      if(off===null){let best=-1;
+        for(let o=-10;o<=40;o++){let sc=0;for(const e of toc)for(const pg in e.pages){const n=+pg+o;if(recs[n]&&RP.looksLikeRecipe(recs[n]))sc+=1+RP.titleScore(e.title,texts[n]);}
+          if(sc>best){best=sc;off=o;}}}
+      S.tocOff=off;
+      const covered=new Set(), anchored=new Set(), tocA=+$('t-from').value||0, tocB=+$('t-to').value||tocA;
+      {
+        // en-têtes courants (répétés en haut de nombreuses pages) retirés
+        const freq={}, L={};
+        for(let n=a;n<=b;n++){L[n]=(texts[n]||'').split('\n');const seen=new Set();let k=0;
+          for(const l of L[n]){if(!l.trim())continue;if(++k>3)break;const key=RP.keyOf(l);if(key.length>=6&&!seen.has(key)){seen.add(key);freq[key]=(freq[key]||0)+1;}}}
+        for(let n=a;n<=b;n++){let i=0;while(i<L[n].length&&(!L[n][i].trim()||freq[RP.keyOf(L[n][i])]>=4))i++;L[n]=L[n].slice(i);}
+        // position de chaque titre de la table dans les pages
+        const A=[];
+        for(const e of toc){
+          const key=RP.keyOf(e.title);let hit=null;
+          for(const pg in e.pages){for(const d of [0,1,-1]){
+            const n=+pg+off+d;if(!L[n]||n<a||n>b)continue;const ls=L[n];
+            for(let i=0;i<ls.length&&!hit;i++){
+              if(!ls[i].trim())continue;let acc='',k=0;
+              for(let j=i;j<ls.length&&k<4;j++){if(!ls[j].trim())continue;acc+=ls[j];k++;const ak=RP.keyOf(acc);
+                if(ak===key){hit={n,i,end:j+1,e,pr:+pg};break;}if(!key.startsWith(ak))break;}
+            }
+            if(hit)break;}if(hit)break;}
+          if(hit)A.push(hit);
+        }
+        A.sort((x,y)=>x.n-y.n||x.i-y.i);
+        const inA=new Set(A.map(h=>h.e)), claimed=new Set();
+        for(const e of toc) if(!inA.has(e)) for(const pg in e.pages){const n=+pg+off;if(recs[n]&&RP.looksLikeRecipe(recs[n],true))claimed.add(n);}
+        const inRange=toc.filter(e=>Object.keys(e.pages).some(pg=>+pg+off>=a&&+pg+off<=b)).length;
+        if(A.length>=Math.max(2,inRange*0.5)){
+          let last=null;
+          A.forEach((h,j)=>{
+            const nx=A[j+1];let endN,endI;
+            if(nx&&nx.n-h.n<=3){endN=nx.n;endI=nx.i;}
+            else{endN=h.n;while(endN+1<=b&&endN-h.n<2&&(texts[endN+1]||'').trim().length>150&&!claimed.has(endN+1)&&!(tocA&&endN+1>=tocA&&endN+1<=tocB))endN++;endI=1e9;}
+            for(let n=h.n+1;n<=endN;n++) if(claimed.has(n)){endN=n-1;endI=1e9;break;}
+            let lines=[];const pages=[];
+            for(let n=h.n;n<=endN;n++){
+              const part=L[n].slice(n===h.n?h.end:0,n===endN?endI:1e9);
+              if(part.some(x=>x.trim())){pages.push(n);lines=lines.concat(part,['']);}
+            }
+            if(!pages.length)pages.push(h.n);
+            anchored.add(h.e);
+            const text=lines.join('\n'), r=RP.parseRecipe(text,{autofix,titled:true});
+            if(RP.looksLikeRecipe(r,true)){
+              r.name=h.e.title;pages.forEach(x=>covered.add(x));
+              if(sentKeys.has(h.n+'|'+RP.keyOf(r.name))){last=null;return;}
+              add(h.n,r,pages,h.pr);last=S.batch[S.batch.length-1];last.multi=true;found++;
+            }else if(last&&last.pages.includes(h.n)){
+              // encadré (variante, astuce) cité dans la table : rattaché à la recette qui le contient
+              const extra=RP.flat(RP.cleanLines(text).join('\n')).slice(0,900);
+              last.r.notes=(last.r.notes?last.r.notes+'\n':'')+h.e.title+(extra?' : '+extra:'');
+            }else anchored.delete(h.e);
+          });
+        }
+      }
+      // les titres non situés précisément : une page par titre, puis un titre par page
+      const byPage={}, missing=[], tocWords=toc.map(e=>e.title).join(' ');
+      const bookText=Object.values(texts).join('\n');S.batch.forEach(i=>{if(i.multi&&i.status!=='ok'&&i.doc===docId&&i.page>=a&&i.page<=b)i.r.name=RP.accent(i.r.name,bookText);});
+      for(const e of toc){
+        if(anchored.has(e)) continue;
+        let pick=null;
+        for(const pg in e.pages) for(const d of [0,1,-1]){
+          const n=+pg+off+d; if(!ok(n,true)||covered.has(n)) continue;
+          const sc=RP.titleScore(e.title,texts[n])*10+e.pages[pg]-(d?3:0)+(RP.looksLikeRecipe(recs[n])?2:0);
+          if(!pick||sc>pick.sc) pick={n,sc};
+        }
+        if(!pick){if(!Object.keys(e.pages).some(pg=>sent.has(+pg+off)))missing.push(e.title+' (p. '+Object.keys(e.pages)[0]+')');continue;}
+        if(!byPage[pick.n]||pick.sc>byPage[pick.n].sc) byPage[pick.n]={title:e.title,sc:pick.sc};
+      }
+      let extra=0;
+      for(let n=a;n<=b;n++){
+        if(byPage[n]){const r=recs[n];if(r.name&&RP.keyOf(r.name)!==RP.keyOf(byPage[n].title))r.desc=r.desc||'';r.name=RP.accent(RP.unglue(byPage[n].title,texts[n],tocWords),bookText);add(n,r,null,n-off);found++;}
+        else if(ok(n)&&!covered.has(n)) extra++;
+      }
+      msg('t-msg','Table : '+toc.length+' titres lus, décalage '+(off>=0?'+':'')+off+' ('+($('t-off').value.trim()===''?'auto':'manuel')+').','ok');
+      msg('b-msg',found+' recette'+(found>1?'s':'')+' de la table retrouvée'+(found>1?'s':'')+' dans le livre.'
+        +(missing.length?'\n'+missing.length+' titre'+(missing.length>1?'s':'')+' de la table sans page de recette reconnue : '+missing.slice(0,12).join(' ; ')+(missing.length>12?' …':'')+'.':'')
+        +(extra?'\n'+extra+' page'+(extra>1?'s':'')+' ressemblant à une recette mais absente'+(extra>1?'s':'')+' de la table '+(extra>1?'ont été ignorées':'a été ignorée')+' (décochez l’option pour les inclure).':''),
+        found?(missing.length?'warn':'ok'):'err');
+    }
+    S.batch.sort((x,y)=>x.page-y.page||(x.ord||0)-(y.ord||0));
+  }catch(e){if(!/err/.test($('b-msg').className))msg('b-msg',e.message||String(e),'err');}
+  finally{S.busy=false;$('b-scan').disabled=false;$('extract').disabled=false;$('b-stop').style.display='none';progress(null,'b-prog');renderBatch();saveBatch();}
+  pickPhotosBg().catch(()=>{});
+};
+$('b-stop').onclick=()=>{S.stop=true;};
+
+/* ---------- EPUB ---------- */
+async function unzip(buf){
+  const dv=new DataView(buf), u8=new Uint8Array(buf), td=new TextDecoder();
+  let i=buf.byteLength-22;const min=Math.max(0,i-65535);
+  while(i>=min&&dv.getUint32(i,true)!==0x06054b50) i--;
+  if(i<min) throw new Error('Fichier EPUB illisible (archive invalide).');
+  const n=dv.getUint16(i+10,true), files=new Map();let p=dv.getUint32(i+16,true);
+  for(let k=0;k<n&&dv.getUint32(p,true)===0x02014b50;k++){
+    const nl=dv.getUint16(p+28,true), el=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true);
+    files.set(td.decode(u8.subarray(p+46,p+46+nl)),{method:dv.getUint16(p+10,true),csize:dv.getUint32(p+20,true),off:dv.getUint32(p+42,true)});
+    p+=46+nl+el+cl;
+  }
+  async function read(name){
+    const f=files.get(name);if(!f) return null;
+    const st=f.off+30+dv.getUint16(f.off+26,true)+dv.getUint16(f.off+28,true), data=u8.subarray(st,st+f.csize);
+    if(f.method===0) return data;
+    if(f.method!==8) throw new Error('Compression non prise en charge dans cet EPUB.');
+    if(typeof DecompressionStream==='undefined') throw new Error('Ce navigateur est trop ancien pour lire les EPUB.');
+    return new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  }
+  return {files,read};
+}
+function resolvePath(dir,href){
+  href=decodeURIComponent((href||'').split('#')[0]);
+  const parts=(href.startsWith('/')?href.slice(1):(dir?dir+'/':'')+href).split('/'), out=[];
+  for(const q of parts){if(q==='..')out.pop();else if(q&&q!=='.')out.push(q);}
+  return out.join('/');
+}
+const dirOf=pth=>pth.includes('/')?pth.slice(0,pth.lastIndexOf('/')):'';
+async function openEpub(buf){
+  const z=await unzip(buf), td=new TextDecoder(), xml=async n=>{const b=await z.read(n);return b?new DOMParser().parseFromString(td.decode(b),'application/xml'):null;};
+  const c=await xml('META-INF/container.xml');
+  const rf=c&&c.getElementsByTagNameNS('*','rootfile')[0];
+  if(!rf) throw new Error('Ce fichier n’est pas un EPUB valide.');
+  const opfPath=rf.getAttribute('full-path'), opf=await xml(opfPath), base=dirOf(opfPath), man={};
+  for(const it of opf.getElementsByTagNameNS('*','item')) man[it.getAttribute('id')]={href:resolvePath(base,it.getAttribute('href')),type:it.getAttribute('media-type')||''};
+  const spine=[...opf.getElementsByTagNameNS('*','itemref')].map(r=>man[r.getAttribute('idref')]).filter(m=>m&&/html|xml/.test(m.type)&&z.files.has(m.href)).map(m=>m.href);
+  const te=opf.getElementsByTagNameNS('*','title')[0];
+  const toc=[], push=(title,dir,href)=>{title=(title||'').replace(/\s+/g,' ').trim();if(title&&href)toc.push({title,path:resolvePath(dir,href),frag:decodeURIComponent(href.split('#')[1]||'')});};
+  try{
+    const navItem=[...opf.getElementsByTagNameNS('*','item')].find(it=>/\bnav\b/.test(it.getAttribute('properties')||''));
+    if(navItem){
+      const np=resolvePath(base,navItem.getAttribute('href')), nd=await xml(np);
+      const navs=nd?[...nd.getElementsByTagNameNS('*','nav')]:[];
+      const nav=navs.find(x=>/toc/.test(x.getAttribute('epub:type')||''))||navs[0];
+      if(nav) for(const l of nav.getElementsByTagNameNS('*','a')) push(l.textContent,dirOf(np),l.getAttribute('href'));
+    }
+    if(!toc.length){
+      const ncx=Object.values(man).find(m=>/dtbncx/.test(m.type));
+      const nd=ncx&&await xml(ncx.href);
+      if(nd) for(const np of nd.getElementsByTagNameNS('*','navPoint')){
+        const lb=np.getElementsByTagNameNS('*','text')[0], ct=np.getElementsByTagNameNS('*','content')[0];
+        if(lb&&ct) push(lb.textContent,dirOf(ncx.href),ct.getAttribute('src'));
+      }
+    }
+  }catch(e){}
+  const MIME={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp'};
+  return {spine,toc,title:te?te.textContent.split(/\s+[:—–-]\s+/)[0].trim():'',drm:z.files.has('META-INF/encryption.xml'),
+    text:async n=>td.decode(await z.read(n)),
+    size:n=>z.files.has(n)?z.files.get(n).csize:0,
+    blob:async n=>{const b=await z.read(n);if(!b)throw new Error('image absente');return new Blob([b],{type:MIME[n.split('.').pop().toLowerCase()]||'image/jpeg'});}};
+}
+/* XHTML → suite de blocs {h,text} | {t} | {img} */
+function htmlItems(src,dir,ids){
+  let doc=new DOMParser().parseFromString(src,'application/xhtml+xml');
+  if(doc.getElementsByTagName('parsererror').length||!doc.body) doc=new DOMParser().parseFromString(src,'text/html');
+  const out=[];let cur='';
+  const flush=sig=>{const t=cur.replace(/\s+/g,' ').trim();if(t)out.push({t,sig:sig||''});cur='';};
+  const BLOCK=/^(p|div|li|tr|blockquote|dd|dt|section|article|ul|ol|table|figure|figcaption|aside|header|footer|pre|dl)$/;
+  const nextIsIngList=h=>{let n=h.nextSibling;while(n&&n.nodeType!==1)n=n.nextSibling;return !!(n&&/ingredient/i.test(n.getAttribute('class')||''));};
+  (function walk(node){
+    let li=0;
+    for(const c of node.childNodes){
+      if(c.nodeType===3){cur+=c.nodeValue;continue;}
+      if(c.nodeType!==1) continue;
+      const tag=(c.localName||'').toLowerCase();
+      if(/^(script|style|head|nav)$/.test(tag)) continue;
+      if(ids){const id=c.getAttribute('id');if(id&&ids.has(id)){flush();out.push({a:id});}}
+      if(tag==='img'||tag==='image'){const h=c.getAttribute('src')||c.getAttribute('xlink:href')||c.getAttribute('href');if(h&&!/^data:|^https?:/.test(h)){flush();out.push({img:resolvePath(dir,h),alt:c.getAttribute('alt')||''});}continue;}
+      if(tag==='br'){flush();continue;}
+      const cls=(c.getAttribute('class')||'')+' '+((c.parentNode&&c.parentNode.getAttribute&&c.parentNode.getAttribute('class'))||'');
+      const isIng=/ingredient/i.test(cls)&&!/step|method|direction|instruction/i.test(cls);
+      if(/^h[1-6]$/.test(tag)){flush();const t=c.textContent.replace(/\s+/g,' ').trim();
+        // sous-titre d'une liste d'ingrédients (« FOR SERVING », « Pour la sauce »)
+        if(t&&(/list-?title|ingredient/i.test(cls)||nextIsIngList(c)))out.push({t:'• # '+RP.smallCaps(t)});
+        else if(t)out.push({h:+tag[1],text:t});continue;}
+      const block=BLOCK.test(tag);
+      if(block) flush();
+      if(tag==='li'&&(node.localName||'').toLowerCase()==='ol'){li++;if(!/^\s*\d/.test(c.textContent))cur+=li+'. ';}
+      if(isIng&&(tag==='li'||tag==='p')){const t=c.textContent.replace(/\s+/g,' ').trim();if(t)out.push({t:'• '+t});continue;}
+      walk(c);
+      if(tag==='td'||tag==='th') cur+=' ';
+      if(block){flush(tag+'.'+(c.getAttribute('class')||''));if(/^(p|ul|ol|table|dl)$/.test(tag)&&out.length&&out[out.length-1].t!=='')out.push({t:''});}
+    }
+  })(doc.body||doc.documentElement);
+  flush();
+  // EPUB sans balisage explicite : une série de blocs de même type, courts, commençant surtout par une quantité = liste d'ingrédients
+  const Q=/^(\d|[¼½¾⅓⅔⅛])/;
+  const sentence=t=>!Q.test(t)&&/[.!]$/.test(t)&&t.split(/\s+/).length>=8;   // une phrase complète n'est pas un ingrédient
+  for(let i=0;i<out.length;i++){
+    const sig=out[i].sig; if(!sig||out[i].t===undefined||/^• /.test(out[i].t)) continue;
+    let j=i;const run=[];
+    while(j<out.length&&(out[j].t===''||(out[j].sig===sig&&out[j].t!==undefined&&out[j].t.length<140&&!/^• /.test(out[j].t)&&!sentence(out[j].t)))){if(out[j].t)run.push(j);j++;}
+    if(run.length>=3&&run.filter(k=>Q.test(out[k].t)).length>=run.length*0.5&&!run.every(k=>/^\d{1,2}[.)]\s/.test(out[k].t))){
+      run.forEach(k=>{out[k].t='• '+out[k].t;});
+      for(let k=run[run.length-1];k>=run[0];k--) if(out[k].t==='') out.splice(k,1);
+      i=run[0]+run.length-1;
+    }else i=Math.max(i,(run.length?run[run.length-1]:i));
+  }
+  return out;
+}
+const SUBHEAD=/^(ingr[ée]dients?|pr[ée]paration|[ée]tapes?|instructions?|m[ée]thode|marche [àa] suivre|directions?|notes?|variantes?|astuces?|trucs?|conseils?|pour\s|garniture|sauce|montage|finition)/i;
+function epubChunks(items,level){
+  const chunks=[];let cur={title:'',lines:[],img:null};
+  for(const it of items){
+    if(it.h&&level&&it.h<=level&&!SUBHEAD.test(it.text)){if(cur.lines.length||cur.title)chunks.push(cur);cur={title:it.text,lines:[],img:cur.lines.length?null:cur.img};continue;}
+    if(it.h){if(!level&&!cur.title&&!cur.lines.some(Boolean))cur.title=it.text;else cur.lines.push('',it.text,'');continue;}
+    if(it.img){if(!cur.img){cur.img=it.img;cur.alt=it.alt;}continue;}
+    cur.lines.push(it.t);
+  }
+  chunks.push(cur);return chunks;
+}
+function epubAnchorChunks(items,ents){
+  const top=ents.find(e=>!e.frag), byId={};ents.forEach(e=>{if(e.frag&&!byId[e.frag])byId[e.frag]=e.title;});
+  const chunks=[];let cur={title:top?top.title:'',lines:[],img:null};
+  for(const it of items){
+    if(it.a){chunks.push(cur);cur={title:byId[it.a],lines:[],img:null};continue;}
+    if(it.h){if(cur.lines.some(Boolean)&&RP.keyOf(it.text)!==RP.keyOf(cur.title||''))cur.lines.push('',it.text,'');continue;}
+    if(it.img){if(!cur.img)cur.img=it.img;continue;}
+    if(it.a===undefined) cur.lines.push(it.t);
+  }
+  chunks.push(cur);return chunks;
+}
+async function scanEpub(){
+  const E=S.epub;if(!E||S.busy) return;
+  S.busy=true;S.stop=false;$('b-scan').disabled=true;$('b-stop').style.display='';
+  S.batch=S.batch.filter(i=>i.status==='ok');S.editing=null;$('edit-tag').textContent='';
+  const book=$('b-book').value.trim(), autofix=$('autofix').checked;let found=0,seq=0;
+  try{
+    const useToc=$('t-use').checked&&E.toc.length>=3, docs=[];
+    const mk=(c,rel)=>{const text=c.lines.join('\n'), r=RP.parseRecipe(text,{autofix});
+      if(!RP.looksLikeRecipe(r,rel)) return null;
+      if(c.title){if(RP.keyOf(r.name)!==RP.keyOf(c.title))r.desc=[r.name,r.desc].filter(Boolean).join(' ');r.name=RP.sentenceCase(c.title);}
+      return {r,text,img:c.img&&E.size(c.img)>12000?c.img:null};};
+    const loose=[];   // sections sans recette qui ne contiennent qu'une image (photo pleine page)
+    for(let k=0;k<E.spine.length&&!S.stop;k++){
+      progress(k/E.spine.length,'b-prog');
+      const src=await E.text(E.spine[k]), dir=dirOf(E.spine[k]), items=htmlItems(src,dir);
+      let heur=[];
+      for(let level=0;level<=4;level++){
+        const rs=epubChunks(items,level).map(c=>mk(c,false)).filter(Boolean);
+        if(rs.length>heur.length) heur=rs;
+      }
+      let matched=null;
+      if(useToc){
+        const ents=E.toc.filter(e=>e.path===E.spine[k]);
+        if(ents.length>=2){
+          const rs=epubAnchorChunks(htmlItems(src,dir,new Set(ents.map(e=>e.frag).filter(Boolean))),ents).filter(c=>c.title).map(c=>mk(c,true)).filter(Boolean);
+          if(rs.length) matched=rs;
+        }
+        if(!matched&&ents.length>=1&&heur.length===1){heur[0].r.name=RP.sentenceCase(ents[ents.length-1].title);matched=heur;}
+      }
+      docs.push({k,heur,matched});
+      if(!heur.length&&!(matched&&matched.length)){const im=items.filter(x=>x.img&&E.size(x.img)>12000), txt=items.filter(x=>x.t).map(x=>x.t).join(' ').replace(/[\w-]+\.(com|net|org)/gi,'').trim();
+        if(im.length&&txt.length<200) loose.push({k,img:im[0].img,alt:im[0].alt||'',txt});}
+      if(k%10===0) await new Promise(r=>setTimeout(r));
+    }
+    // photo pleine page placée dans une section voisine : rattachée à la recette d'avant ou d'après (selon son texte alternatif)
+    const listOf=d=>(useToc&&d.matched&&d.matched.length?d.matched:d.heur);
+    const untitled=o=>!o.r.name.trim()||/^(prep|cook|total|serves|makes|yields?|pr[ée]paration|cuisson|portions?)\b/i.test(o.r.name)||o.r.name.length>90;
+    for(const L of loose){
+      // page « titre + photo » juste avant une recette qui n'a pas de titre : c'est le sien
+      const nd=docs[L.k+1], n0=nd&&listOf(nd)[0];
+      if(n0&&L.txt.length>=3&&L.txt.length<=150&&untitled(n0)){
+        if(n0.r.name.trim()&&n0.r.name.length>90) n0.r.desc=[n0.r.name,n0.r.desc].filter(Boolean).join(' ');
+        n0.r.name=RP.smallCaps(L.txt).replace(/^./,c=>c.toUpperCase());n0.img=L.img;continue;
+      }
+      let prev=null,next=null;
+      for(let k=L.k-1;k>=Math.max(0,L.k-2)&&!prev;k--){const l=listOf(docs[k]);if(l.length)prev=l[l.length-1];}
+      for(let k=L.k+1;k<=Math.min(docs.length-1,L.k+2)&&!next;k++){const l=listOf(docs[k]);if(l.length)next=l[0];}
+      const sp=prev&&!prev.img?RP.titleScore(prev.r.name,L.alt)+0.01:-1, sn=next&&!next.img?RP.titleScore(next.r.name,L.alt):-1;
+      const pick=sp<0&&sn<0?null:(sn>sp?next:prev);
+      if(pick) pick.img=L.img;
+    }
+    const nH=docs.reduce((x,d)=>x+d.heur.length,0), nM=docs.reduce((x,d)=>x+(d.matched?d.matched.length:0),0);
+    const tocOk=useToc&&nM>0&&nM>=nH*0.5;
+    let ignored=0;
+    for(const d of docs){
+      const list=tocOk?(d.matched||[]):d.heur;
+      if(tocOk&&!d.matched) ignored+=d.heur.length;
+      for(const o of list){
+        found++;const r=o.r;
+        S.batch.push({page:++seq,label:'section '+(d.k+1),epub:true,sel:true,status:'',fixes:r.fixes,text:o.text,img:o.img,
+          r:{name:r.name,desc:r.desc,yield:r.yield,prep:r.prep,cook:r.cook,total:r.total,ing:r.ing.join('\n'),steps:r.steps.join('\n'),notes:r.notes,cats:fv('cats'),tags:withBook(''),source:book}});
+      }
+    }
+    if($('t-use').checked) msg('t-msg',tocOk?'Table des matières de l’EPUB utilisée ('+E.toc.length+' entrées) pour les titres et le découpage.'+(ignored?' '+ignored+' recette'+(ignored>1?'s':'')+' hors table ignorée'+(ignored>1?'s':'')+'.':'')
+      :(E.toc.length>=3?'La table des matières de cet EPUB ne descend pas jusqu’aux recettes : analyse par le contenu.':'Pas de table des matières exploitable : analyse par le contenu.'),tocOk?'ok':'warn');
+    msg('b-msg',found?found+' recette'+(found>1?'s':'')+' détectée'+(found>1?'s':'')+' dans l’EPUB. Touchez une recette pour la vérifier et la corriger ; ⚠ = titre à revoir ; décochez celles à exclure.'
+      :'Aucune recette détectée dans cet EPUB.'+(E.drm?' Il semble protégé (DRM) : son contenu n’est pas lisible.':''),found?'ok':'err');
+  }catch(e){msg('b-msg',e.message||String(e),'err');}
+  finally{S.busy=false;$('b-scan').disabled=false;$('b-stop').style.display='none';progress(null,'b-prog');renderBatch();saveBatch();}
+}
+$('b-all').onclick=()=>{const on=S.batch.some(i=>!i.sel&&i.status!=='ok');S.batch.forEach(i=>{if(i.status!=='ok')i.sel=on;});renderBatch();saveBatch();};
+$('b-clear').onclick=()=>{S.pickRun=(S.pickRun||0)+1;msg('ph-msg','');S.batch=[];S.editing=null;$('edit-tag').textContent='';renderBatch();saveBatch();msg('b-msg','Liste vidée.');};
+$('b-again').onclick=()=>{S.batch.forEach(i=>{if(i.status==='ok'||i.status==='err'){i.status='';i.warn='';i.err='';i.sel=true;}});renderBatch();saveBatch();
+  msg('b-msg','Les recettes déjà envoyées sont de nouveau cochées. Selon le réglage « Si la recette est déjà dans Mealie », elles seront mises à jour, ignorées ou copiées.');};
+$('b-book').addEventListener('change',saveBatch);
+$('b-send').onclick=async()=>{
+  const todo=S.batch.filter(i=>i.sel&&i.status!=='ok');
+  if(!todo.length||S.busy) return;
+  const pdfItems=todo.filter(i=>!i.epub), wantImg=$('m-img').checked||$('m-att').value!=='none';
+  if(pdfItems.length&&wantImg){
+    const doc=S.pdf&&S.pdf.fingerprints?S.pdf.fingerprints[0]:null;
+    if(!S.pdf){msg('b-msg','Le PDF du livre n’est pas chargé (la liste a été restaurée après un rechargement de la page) : sans lui, ni photo ni page d’origine ne peuvent être jointes.\n→ Rechargez le PDF à la section 1, puis renvoyez. Les recettes déjà dans Mealie seront complétées, pas dupliquées.\n→ Ou désactivez la photo et les pièces jointes à la section 3.','err');return;}
+    if(pdfItems.some(i=>i.doc&&doc&&i.doc!==doc)){msg('b-msg','Le PDF chargé n’est pas celui d’où vient cette liste : les photos et pages jointes seraient fausses. Chargez le bon PDF, ou videz la liste et relancez l’analyse.','err');return;}
+  }
+  S.busy=true;S.stop=false;$('b-send').disabled=true;$('b-stop').style.display='';S.index=null;
+  let ok=0,ko=0,fatal='';const cnt={created:0,updated:0,skipped:0};
+  try{
+    for(let k=0;k<todo.length&&!S.stop;k++){
+      const it=todo[k];progress(k/todo.length,'b-prog');msg('b-msg','Envoi '+(k+1)+' / '+todo.length+'…');
+      if(!it.r.name.trim()){it.status='err';it.err='titre manquant';ko++;renderBatch();continue;}
+      it.status='run';renderBatch();
+      try{let ph=null;if(it.img&&S.epub){try{ph=await S.epub.blob(it.img);}catch(e){}}
+        if(!it.epub){try{ph=await itemPhoto(it);}catch(e){}}
+        let att=[];if(!it.epub){try{att=await sourceAssets(it.page,it);}catch(e){}}
+        const o=await sendRecipe(toRec(it.r),ph,att);
+        it.status='ok';it.slug=o.slug;it.act=o.action;it.warn=(o.renamed?['titre : « '+o.renamed+' »']:[]).concat(o.warn).join(' ; ');ok++;cnt[o.action]++;}
+      catch(e){it.status='err';it.err=e.net?'serveur injoignable':e.message.split('\n')[0];ko++;
+        if(e.net||/401|40[45]/.test(e.message)){fatal=/^Erreur 40[45]/.test(e.message)?e.message+OLD_API:e.message;break;}}
+      renderBatch();saveBatch();
+    }
+  }finally{S.busy=false;$('b-stop').style.display='none';progress(null,'b-prog');renderBatch();saveBatch();}
+  msg('b-msg',fatal?'Envoi interrompu après '+ok+' recette'+(ok>1?'s':'')+'.\n'+fatal+'\nLes recettes déjà envoyées ne seront pas renvoyées.':ok+' recette'+(ok>1?'s':'')+' traitée'+(ok>1?'s':'')+' : '+cnt.created+' créée'+(cnt.created>1?'s':'')+', '+cnt.updated+' mise'+(cnt.updated>1?'s':'')+' à jour, '+cnt.skipped+' ignorée'+(cnt.skipped>1?'s':'')+(ko?' ; '+ko+' en erreur (voir la liste).':'.'),fatal||ko?'err':'ok');
+};
+$('b-dl').onclick=()=>{
+  const arr=S.batch.filter(i=>i.sel).map(i=>RP.buildLD(toRec(i.r),{inlineNotes:true}));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(arr,null,2)],{type:'application/json'}));a.download='lot-recettes.json';a.click();
+};
+$('copy').onclick=async()=>{
+  const t=$('json').textContent;
+  try{await navigator.clipboard.writeText(t);}
+  catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();}
+  $('copy').textContent='Copié ✓';setTimeout(()=>$('copy').textContent='Copier le JSON',1500);
+};
+$('dl').onclick=()=>{
+  const name=(fv('name').trim()||'recette').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([$('json').textContent],{type:'application/json'}));a.download=name+'.json';a.click();
+};
+
+/* ---------- événements ---------- */
+$('file').onchange=e=>{openFile(e.target.files[0]);e.target.value='';};
+$('cam').onchange=e=>{openFile(e.target.files[0]);e.target.value='';};
+const drop=$('drop');
+['dragenter','dragover'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>openFile(e.dataTransfer.files[0]));
+document.addEventListener('paste',e=>{
+  const it=[...(e.clipboardData?e.clipboardData.items:[])].find(i=>i.kind==='file'&&(i.type.startsWith('image/')||i.type==='application/pdf'));
+  if(it){e.preventDefault();const f=it.getAsFile();openFile(new File([f],f.name||'collage.png',{type:f.type}));}
+});
+$('prev').onclick=()=>showPage(S.pnum-1).catch(e=>msg('src-msg',e.message,'err'));
+$('next').onclick=()=>showPage(S.pnum+1).catch(e=>msg('src-msg',e.message,'err'));
+$('pnum').onchange=()=>showPage(+$('pnum').value).catch(e=>msg('src-msg',e.message,'err'));
+$('rot').onclick=()=>{S.rot=(S.rot+90)%360;S.sel=null;drawSel();if(S.pdf)showPage(S.pnum);else if(S.img)drawImage();};
+$('extract').onclick=extract;
+
+/* ---------- restauration ---------- */
+const d=store('rt-draft');if(d)F.forEach(k=>{if(d[k])setF(k,d[k]);});
+const ms=store('rt-mealie');if(ms){$('m-url').value=ms.url||'';$('m-token').value=ms.token||'';$('m-save').checked=true;}
+const sb=store('rt-batch');if(sb){$('b-book').value=sb.book||'';S.batch=(sb.items||[]).map(i=>{if(i.status==='run')i.status='';return i;});renderBatch();
+  if(S.batch.some(i=>!i.epub&&i.status!=='ok')) msg('b-msg','Liste restaurée. Rechargez le PDF du livre (section 1) avant d’envoyer : il est nécessaire pour joindre les photos et les pages d’origine.','warn');}
+probeSame().then(ok=>{
+  if(ok) msg('m-msg','Mealie détecté derrière cette page (version '+S.mver+') : seul le jeton API est requis.','ok');
+  else if(S.relay!=='local') msg('m-msg',netHelp(''),'warn');
+});
+changed();
+window.__RT={S,showPage,extract,openFile};
+})();
+</script>
+</body>
+</html>
