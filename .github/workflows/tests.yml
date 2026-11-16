@@ -1,0 +1,16 @@
+name: Tests
+on: [push, pull_request]
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Analyse des recettes et recherche sur le web
+        run: node tests/run.mjs
+      - name: Relais web
+        run: python3 tests/test_webrelay.py
+      - name: Syntaxe du script d'installation
+        run: bash -n install.sh

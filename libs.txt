@@ -1,0 +1,11 @@
+# Bibliothèques copiées dans le conteneur (dossier lib/ de la page) : nom, adresse, empreinte SHA-256.
+# La première ligne « @ » donne les versions que la page attend ; elle est écrite dans lib/ok.json une fois tout vérifié.
+@ {"pdfjs":"4.10.38","tesseract":"5.1.1"}
+pdf.min.mjs https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.min.mjs 44ec6f011027ee77791386b66c14876a5fc29e20bf0433c07c6726fff7212b72
+pdf.worker.min.mjs https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs bd88805178a26c729db8c0107a5b630cb900ec070f4d8c7529a3e45530afd41d
+tesseract.min.js https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js a8e29918d098b2b06e1012bdaeffb4aec0445c5d5654709023e0bd1f442a80e8
+worker.min.js https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js aca1229639fc9907d86f96e825955a2b7c5716d17f3bc3acd71f9c7ab66181fc
+tesseract-core-simd-lstm.wasm.js https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core-simd-lstm.wasm.js ce20eda9533cbed1e6c2b4276fbae1e0adc61b6754b5513084be601787b457cf
+tesseract-core-lstm.wasm.js https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core-lstm.wasm.js 8f04aa0cc81e7bde33f80e92fa01a7a665f0b4884d098acf5de9c7104a11dfaa
+fra.traineddata.gz https://cdn.jsdelivr.net/npm/@tesseract.js-data/fra@1.0.0/4.0.0_best_int/fra.traineddata.gz d611139672b3752c7097e671e4a1d9209dfd37f2aeb081ef6487fba3351e9255
+eng.traineddata.gz https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int/eng.traineddata.gz 45b4cb346724ac1774f1c36f42f182b887bcdb28ebe63e6fff90ac41f3fcff91

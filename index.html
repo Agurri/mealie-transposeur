@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<meta name="transposeur-version" content="2026.11.16-1">
 <title>Transposeur de recettes → Mealie</title>
 <style>
 :root{
@@ -64,7 +66,11 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
 .check input{width:18px;height:18px}
 #b-list{margin-top:10px;max-height:420px;overflow:auto;border-top:1px solid var(--line)}
 #b-list:empty{display:none}
-.brow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.brow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.brow select.pick{width:auto;flex:none;max-width:9.5em;padding:6px;font-size:.8rem}
+.brow select.pick.todo{border-color:var(--accent);color:var(--accent);font-weight:600}
+#ver{white-space:nowrap}
+#web-box{display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:4px}
 .brow input{width:20px;height:20px;flex:none}
 .brow button{flex:1;min-width:0;text-align:left;justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:0;padding:6px 10px;border-color:transparent;background:none}
 .brow button.cur{border-color:var(--accent)}
@@ -78,7 +84,7 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
 <body>
 <header>
   <h1>Transposeur de recettes <span>→ Mealie</span></h1>
-  <p>PDF, EPUB, numérisation ou photo → texte → recette structurée → import dans Mealie. Tout se passe dans votre navigateur.</p>
+  <p>PDF, EPUB, numérisation ou photo → texte → recette structurée → import dans Mealie. Tout se passe dans votre navigateur. <span id="ver"></span></p>
 </header>
 
 <main>
@@ -143,6 +149,8 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
       <h2><i>L</i> Lot — livre entier</h2>
       <label for="b-book">Nom du livre <span style="font-weight:400">(ajouté comme étiquette et comme source)</span></label>
       <input id="b-book" type="text" placeholder="Titre du livre de recettes">
+      <label for="b-site">Site de l’auteur ou de l’éditeur <span style="font-weight:400">(facultatif : pour retrouver les mêmes recettes en ligne)</span></label>
+      <div class="row"><input id="b-site" type="url" class="grow" style="width:auto" placeholder="www.exemple.com" autocomplete="off"><button id="w-find" type="button">Chercher sur le site</button></div>
       <div class="grid2">
         <div><label for="b-from">De la page</label><input id="b-from" type="number" min="1"></div>
         <div><label for="b-to">À la page</label><input id="b-to" type="number" min="1"></div>
@@ -165,6 +173,11 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
       <div id="b-prog"><b></b></div>
       <div id="b-msg" class="msg">Chargez un PDF ou un EPUB, puis analysez tout le livre d’un coup.</div>
       <div id="ph-msg" class="msg"></div>
+      <div id="w-msg" class="msg"></div>
+      <div id="w-bar" class="row" style="display:none;margin-top:8px">
+        <label for="w-all" style="margin:0">Recettes aussi présentes sur le site :</label>
+        <select id="w-all" class="grow" style="width:auto"><option value="">Choisir pour toutes…</option><option value="book">Importer la version du livre</option><option value="web">Importer la version du site</option></select>
+      </div>
       <div id="b-list"></div>
       <div id="b-actions" class="row" style="display:none;margin-top:10px">
         <button id="b-send" class="primary grow">Envoyer dans Mealie</button>
@@ -204,6 +217,18 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
         <img id="photo-prev" alt="Photo de la recette">
         <button id="photo-x" style="display:none">Retirer</button>
       </div>
+      <div id="web-box">
+        <div id="web-info" class="msg"></div>
+        <div id="web-pick-row" class="row" style="margin-top:8px">
+          <label for="w-pick" style="margin:0">Version à importer</label>
+          <select id="w-pick" class="grow" style="width:auto"><option value="">Choisir…</option><option value="book">Celle du livre (ci-dessus)</option><option value="web">Celle du site web</option></select>
+          <button id="w-rm" type="button">Oublier le site</button>
+        </div>
+        <details id="w-man">
+          <summary>Indiquer l’adresse de cette recette sur le web</summary>
+          <div class="row" style="margin-top:8px"><input id="w-url" type="url" class="grow" style="width:auto" placeholder="https://…" autocomplete="off"><button id="w-check" type="button">Vérifier</button></div>
+        </details>
+      </div>
     </section>
 
     <section class="card">
@@ -211,6 +236,7 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
       <label for="m-url" id="m-url-lab">Adresse du serveur</label><input id="m-url" type="url" placeholder="https://mealie.exemple.com" autocomplete="off">
       <label for="m-token">Jeton API <span style="font-weight:400">(Mealie → Profil → Jetons API)</span></label><div class="row"><input id="m-token" type="password" autocomplete="off" class="grow" style="width:auto"><button id="m-show" type="button" aria-pressed="false">Afficher</button></div>
       <label class="check"><input id="m-save" type="checkbox"> Mémoriser sur cet appareil</label>
+      <div id="m-http" class="hint" style="display:none">Cette page est servie en HTTP : le jeton mémorisé circule en clair sur votre réseau local. Pour chiffrer la connexion, sur l’hôte Proxmox : bash install.sh update --https</div>
       <label for="m-dup">Si la recette est déjà dans Mealie</label>
       <select id="m-dup">
         <option value="update">La mettre à jour (contenu, photo, pièces jointes) — pas de doublon</option>
@@ -629,7 +655,7 @@ function buildLD(r,opts){
   return ld;
 }
 
-root.RP={accent,smallCaps,flat,unglue,tocEntries,keyOf,titleScore,looksLikeRecipe,doubtfulTitle,repairTitle,parseRecipe,parseIngredients,parseSteps,fixConversions,buildLD,toISO,cleanLines,sentenceCase,flat};
+root.RP={accent,smallCaps,flat,unglue,tocEntries,keyOf,titleScore,looksLikeRecipe,doubtfulTitle,repairTitle,parseRecipe,parseIngredients,parseSteps,fixConversions,buildLD,toISO,cleanLines,sentenceCase};
 })(typeof window!=='undefined'?window:globalThis);
 </script>
 
@@ -781,34 +807,201 @@ root.LAYOUT={layoutPage};
 })(typeof window!=='undefined'?window:globalThis);
 </script>
 
+<!-- ===================== Recettes en ligne (aucune dépendance au DOM) ===================== -->
+<script id="web-js">
+/* Retrouver sur le site de l'auteur ou de l'éditeur les recettes d'un livre :
+   lecture du plan du site (sitemap), rapprochement titre ↔ adresse, lecture de la recette (JSON-LD schema.org). */
+(function(root){
+'use strict';
+const fold=s=>String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/œ/g,'oe').replace(/æ/g,'ae');
+const STOP=new Set('a au aux avec d de des du en et l la le les ou pour sans sur un une the of and with in on for recette recettes recipe recipes html htm php aspx'.split(' '));
+const stem=t=>t.length>3?t.replace(/[sx]$/,''):t;
+function tokens(s){
+  return [...new Set(fold(s).replace(/['’‘]/g,' ').split(/[^a-z0-9]+/).filter(t=>t.length>1&&!STOP.has(t)&&!/^\d+$/.test(t)).map(stem))];
+}
+function sim(a,b){
+  const A=new Set(tokens(a)),B=new Set(tokens(b));if(!A.size||!B.size)return 0;
+  let n=0;A.forEach(x=>{if(B.has(x))n++;});return n/(A.size+B.size-n);
+}
+function normSite(s){
+  s=String(s||'').trim();if(!s)return null;
+  if(!/^https?:\/\//i.test(s))s='https://'+s;
+  let u;try{u=new URL(s);}catch(e){return null;}
+  if(!/\./.test(u.hostname))return null;
+  return {origin:u.origin,host:u.hostname,base:u.hostname.replace(/^www\./,'')};
+}
+function sameSite(url,site){
+  try{const h=new URL(url).hostname.replace(/^www\./,'');return h===site.base||h.endsWith('.'+site.base);}catch(e){return false;}
+}
+const ENT={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' ',eacute:'é',egrave:'è',ecirc:'ê',agrave:'à',acirc:'â',ccedil:'ç',ocirc:'ô',ucirc:'û',ugrave:'ù',icirc:'î',iuml:'ï',euml:'ë',oelig:'œ',rsquo:'’',lsquo:'‘',laquo:'«',raquo:'»',hellip:'…',ndash:'–',mdash:'—',deg:'°',frac12:'½',frac14:'¼',frac34:'¾'};
+function decode(s){
+  return String(s==null?'':s).replace(/&(#x[0-9a-f]+|#\d+|[a-z0-9]+);/gi,(m,e)=>{
+    if(e[0]==='#'){const n=/^#x/i.test(e)?parseInt(e.slice(2),16):parseInt(e.slice(1),10);try{return String.fromCodePoint(n);}catch(x){return m;}}
+    const k=e.toLowerCase();return Object.prototype.hasOwnProperty.call(ENT,k)?ENT[k]:m;
+  });
+}
+/* texte lisible d'un fragment HTML */
+function textOf(s){return decode(String(s==null?'':s).replace(/<[^>]*>/g,' ')).replace(/\s+/g,' ').trim();}
+function htmlLines(s){
+  return String(s==null?'':s).replace(/<\/(p|li|div|h\d)>|<br\s*\/?>/gi,'\n').split(/\r?\n+/).map(textOf).filter(Boolean);
+}
+function robotsSitemaps(txt){
+  const out=[];for(const l of String(txt||'').split(/\r?\n/)){const m=l.match(/^\s*sitemap\s*:\s*(\S+)/i);if(m)out.push(m[1]);}
+  return out;
+}
+function sitemapParse(xml){
+  xml=String(xml||'');
+  const locs=[],re=/<loc>\s*(?:<!\[CDATA\[)?\s*([^<\]\s]+)\s*(?:\]\]>)?\s*<\/loc>/gi;let m;
+  while((m=re.exec(xml)))locs.push(decode(m[1]));
+  return {index:/<sitemapindex[\s>]/i.test(xml),locs};
+}
+/* ordre de lecture des plans secondaires : ceux des recettes d'abord ; images, auteurs, étiquettes… ignorés */
+function childRank(url){
+  const f=fold(url.replace(/^https?:\/\/[^/]+/,''));
+  if(/(image|video|author|auteur|tag|etiquette|categor|attachment|product|produit|news|actualite)/.test(f))return -1;
+  if(/recipe|recette/.test(f))return 2;
+  if(/post|page|article/.test(f))return 1;
+  return 0;
+}
+function slugOf(url){
+  let p;try{p=new URL(url).pathname;}catch(e){return '';}
+  const seg=p.split('/').filter(Boolean).map(x=>{try{return decodeURIComponent(x);}catch(e){return x;}});
+  while(seg.length){
+    const last=seg.pop().replace(/\.(html?|php|aspx?)$/i,'');
+    if(/^(index|default)$/i.test(last)||!tokens(last).length)continue;
+    return last;
+  }
+  return '';
+}
+function buildIndex(urls){
+  const items=[],by=new Map(),seen=new Set();
+  for(const url of urls){
+    if(seen.has(url))continue;seen.add(url);
+    const tok=tokens(slugOf(url));if(!tok.length)continue;
+    const i=items.push({url,tok:new Set(tok)})-1;
+    for(const t of tok){let l=by.get(t);if(!l)by.set(t,l=[]);l.push(i);}
+  }
+  return {items,by};
+}
+/* adresses du site dont le nom correspond au titre : [{url,score}], la meilleure d'abord (3 au plus) */
+function match(title,idx){
+  const T=tokens(title);if(!T.length)return [];
+  const cand=new Map();
+  for(const t of T)for(const i of idx.by.get(t)||[])cand.set(i,(cand.get(i)||0)+1);
+  const out=[];
+  for(const [i,inter] of cand){
+    const U=idx.items[i].tok,missing=T.length-inter,extra=U.size-inter,score=inter/(T.length+extra);
+    if(T.length===1?(missing===0&&extra===0):(inter>=2&&((missing===0&&extra<=2)||score>=0.75)))out.push({url:idx.items[i].url,score});
+  }
+  out.sort((a,b)=>b.score-a.score||a.url.length-b.url.length);
+  return out.slice(0,3);
+}
+const isRecipe=o=>o&&typeof o==='object'&&[].concat(o['@type']||[]).some(t=>/(^|[\/#:])Recipe$/.test(String(t)));
+function findRecipe(o,depth){
+  if(!o||typeof o!=='object'||depth>6)return null;
+  if(Array.isArray(o)){for(const x of o){const r=findRecipe(x,depth+1);if(r)return r;}return null;}
+  if(isRecipe(o))return o;
+  for(const k of ['@graph','mainEntity','mainEntityOfPage','itemListElement','item']){const r=findRecipe(o[k],depth+1);if(r)return r;}
+  return null;
+}
+/* la recette (objet schema.org) décrite dans une page web, ou null */
+function extractRecipeLD(html){
+  const re=/<script\b[^>]*type\s*=\s*["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi;let m;
+  while((m=re.exec(String(html||'')))){
+    let txt=m[1].replace(/^\s*(?:<!--|\/\/\s*<!\[CDATA\[|\/\*\s*<!\[CDATA\[\s*\*\/)/,'').replace(/(?:-->|\/\/\s*\]\]>|\/\*\s*\]\]>\s*\*\/)\s*$/,'').trim();
+    let data;try{data=JSON.parse(txt);}catch(e){try{data=JSON.parse(txt.replace(/[\u0000-\u001f]+/g,' '));}catch(e2){continue;}}
+    const r=findRecipe(data,0);
+    if(r){const o=Object.assign({},r);delete o.review;delete o.comment;delete o.reviews;delete o.interactionStatistic;delete o.potentialAction;return o;}
+  }
+  return null;
+}
+function imageOf(x){
+  if(!x)return '';
+  if(typeof x==='string')return /^https?:\/\//i.test(x)?x:'';
+  if(Array.isArray(x)){for(const y of x){const u=imageOf(y);if(u)return u;}return '';}
+  return imageOf(x.url||x.contentUrl||'');
+}
+function stepsOf(x,out,depth){
+  if(!x||depth>5)return;
+  if(typeof x==='string'){htmlLines(x).forEach(l=>out.push(l));return;}
+  if(Array.isArray(x)){x.forEach(y=>stepsOf(y,out,depth+1));return;}
+  if(typeof x!=='object')return;
+  const type=[].concat(x['@type']||[]).join(' ');
+  if(/HowToSection/.test(type)||(x.itemListElement&&!x.text)){
+    const n=textOf(x.name||'');if(n&&/HowToSection/.test(type))out.push('# '+n);
+    stepsOf(x.itemListElement,out,depth+1);return;
+  }
+  const t=textOf(x.text||x.description||x.name||'');if(t)out.push(t);
+}
+/* objet schema.org → champs du transposeur */
+function ldToRec(ld){
+  ld=ld||{};
+  const steps=[];stepsOf(ld.recipeInstructions,steps,0);
+  let y=ld.recipeYield;if(Array.isArray(y))y=y.map(String).sort((a,b)=>b.length-a.length)[0];
+  y=textOf(y==null?'':String(y));if(/^\d+$/.test(y))y+=' portions';
+  const ing=[].concat(ld.recipeIngredient||ld.ingredients||[]).map(textOf).filter(Boolean);
+  const dur=v=>typeof v==='string'?v.trim():'';
+  return {name:textOf(ld.name||ld.headline||''),desc:textOf(ld.description||''),yield:y,prep:dur(ld.prepTime),cook:dur(ld.cookTime),total:dur(ld.totalTime),ing,steps,image:imageOf(ld.image)};
+}
+root.WEB={tokens,sim,normSite,sameSite,decode,textOf,robotsSitemaps,sitemapParse,childRank,slugOf,buildIndex,match,extractRecipeLD,ldToRec};
+})(typeof window!=='undefined'?window:globalThis);
+</script>
+
 <!-- ===================== Application ===================== -->
 <script>
 (function(){
 'use strict';
-const LIBS={
-  pdf:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  pdfWorker:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
-  tess:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'
+/* Bibliothèques PDF et OCR : copie locale du conteneur (dossier lib/, téléchargé et vérifié à l'installation) si elle existe, sinon le CDN. */
+const LIBV={pdfjs:'4.10.38',tesseract:'5.1.1'};
+const CDN={
+  pdf:'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.min.mjs',
+  pdfWorker:'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs',
+  tess:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
+  tessSRI:'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F'
 };
+const LOCAL={dir:'lib',pdf:'lib/pdf.min.mjs',pdfWorker:'lib/pdf.worker.min.mjs',tess:'lib/tesseract.min.js',tessWorker:'lib/worker.min.js'};
+const VERSION=(document.querySelector('meta[name="transposeur-version"]')||{}).content||'';
 const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d',{willReadFrequently:false});
-const S={pdf:null,page:null,viewport:null,pnum:1,rot:0,img:null,sel:null,hasLayer:false,photo:null,workers:{},group:null,busy:false,batch:[],editing:null,stop:false,epub:null,tcache:new Map(),pscore:new Map(),tocOff:0};
+const S={pdf:null,page:null,viewport:null,pnum:1,rot:0,img:null,sel:null,hasLayer:false,photo:null,pools:{},ocrMax:1,group:null,busy:false,batch:[],editing:null,stop:false,epub:null,tcache:new Map(),pscore:new Map(),tocOff:0};
 
 /* ---------- utilitaires ---------- */
 function msg(id,text,cls){const e=$(id);e.textContent=text||'';e.className='msg'+(cls?' '+cls:'');}
 function progress(p,id){const e=$(id||'prog');if(p==null){e.style.display='none';return;}e.style.display='block';e.firstElementChild.style.width=Math.round(p*100)+'%';}
 const loaded={};
-function loadScript(url){
-  return loaded[url]||(loaded[url]=new Promise((res,rej)=>{const s=document.createElement('script');s.src=url;s.onload=res;
-    s.onerror=()=>{delete loaded[url];rej(new Error('Impossible de charger '+url+' — une connexion Internet est requise pour les bibliothèques PDF/OCR.'));};document.head.appendChild(s);}));
+const abs=u=>new URL(u,location.href).href;
+function loadScript(url,integrity){
+  return loaded[url]||(loaded[url]=new Promise((res,rej)=>{const s=document.createElement('script');s.src=url;
+    if(integrity){s.integrity=integrity;s.crossOrigin='anonymous';}
+    s.onload=res;
+    s.onerror=()=>{delete loaded[url];rej(new Error('Impossible de charger '+url+' : une connexion Internet est requise pour les bibliothèques PDF/OCR (sauf si le conteneur en a une copie locale).'));};document.head.appendChild(s);}));
 }
+let libsP=null;
+function libsLocal(){
+  return libsP||(libsP=(async()=>{
+    if(!/^https?:$/.test(location.protocol)) return false;
+    try{const r=await fetch(LOCAL.dir+'/ok.json',{cache:'no-store'});if(!r.ok)return false;const j=await r.json();return j.pdfjs===LIBV.pdfjs&&j.tesseract===LIBV.tesseract;}
+    catch(e){return false;}
+  })());
+}
+let pdfjsLib=null;
 async function ensurePdf(){
-  await loadScript(LIBS.pdf);
-  if(!S.pdfReady){
-    try{const r=await fetch(LIBS.pdfWorker);const b=new Blob([await r.text()],{type:'text/javascript'});pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(b);}
-    catch(e){pdfjsLib.GlobalWorkerOptions.workerSrc=LIBS.pdfWorker;}
-    S.pdfReady=true;
+  if(pdfjsLib) return;
+  const local=await libsLocal();
+  let mod;
+  try{mod=await import(local?abs(LOCAL.pdf):CDN.pdf);}
+  catch(e){throw new Error('Impossible de charger la bibliothèque PDF'+(local?' du conteneur.':' : une connexion Internet est requise (ou un navigateur plus récent).'));}
+  if(local) mod.GlobalWorkerOptions.workerSrc=abs(LOCAL.pdfWorker);
+  else{
+    // un « worker » ne peut pas être chargé directement depuis un autre site : on en fait une copie locale
+    try{const r=await fetch(CDN.pdfWorker);if(!r.ok)throw 0;mod.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([await r.text()],{type:'text/javascript'}));}
+    catch(e){mod.GlobalWorkerOptions.workerSrc=CDN.pdfWorker;}
   }
+  pdfjsLib=mod;
+}
+async function loadTess(){
+  if(await libsLocal()) return loadScript(abs(LOCAL.tess));
+  return loadScript(CDN.tess,CDN.tessSRI);
 }
 function store(k,v){try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||'null');if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v));}catch(e){return null;}}
 
@@ -836,7 +1029,7 @@ async function openFile(f){
     if(f.type==='application/pdf'||/\.pdf$/i.test(f.name)){
       await ensurePdf();
       S.img=null;
-      S.pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+      S.pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer(),isEvalSupported:false}).promise;
       $('pcount').textContent='/ '+S.pdf.numPages; $('pnum').max=S.pdf.numPages;
       $('pdfnav').style.display='';
       $('b-from').value=1;$('b-to').value=S.pdf.numPages;$('b-from').max=$('b-to').max=S.pdf.numPages;$('b-scan').disabled=false;
@@ -962,16 +1155,36 @@ function layerTextFor(tc,vp,rect){
   return out;
 }
 function ocrText(){return ocrCanvas(cropCanvas(2600,1400));}
-async function ocrCanvas(canvas){
-  await loadScript(LIBS.tess);
-  const lang=$('lang').value;
-  if(!S.workers[lang]){
-    msg('src-msg','Chargement du moteur OCR ('+lang+')… la première fois, quelques Mo sont téléchargés.');
-    S.workers[lang]=await Tesseract.createWorker(lang,1,{logger:m=>{if(m.status==='recognizing text')progress(m.progress);else if(typeof m.progress==='number')progress(m.progress*0.3);}});
+/* Moteurs OCR : un seul pour une page isolée, jusqu'à OCR_MAX en parallèle pour un livre numérisé */
+const OCR_MAX=Math.max(1,Math.min(3,Math.floor((navigator.hardwareConcurrency||2)/2),navigator.deviceMemory?Math.floor(navigator.deviceMemory/2):3));
+function ocrPool(lang){return S.pools[lang]||(S.pools[lang]={n:0,free:[],wait:[]});}
+async function ocrAcquire(lang,quiet){
+  const P=ocrPool(lang);
+  if(P.free.length) return P.free.pop();
+  if(P.n<Math.max(1,S.ocrMax)){
+    P.n++;
+    try{
+      if(!quiet) msg('src-msg','Chargement du moteur OCR ('+lang+')… la première fois, quelques Mo sont téléchargés.');
+      const h={quiet:true}, o={logger:m=>{if(h.quiet)return;if(m.status==='recognizing text')progress(m.progress);else if(typeof m.progress==='number')progress(m.progress*0.3);}};
+      if(await libsLocal()){o.workerPath=abs(LOCAL.tessWorker);o.corePath=abs(LOCAL.dir);o.langPath=abs(LOCAL.dir);}
+      h.quiet=!!quiet;
+      const w=await Tesseract.createWorker(lang,1,o);
+      return {w,h};
+    }catch(e){P.n--;if(!P.n)throw e;}   // un moteur de plus n'a pas démarré (mémoire) : on attend qu'un autre se libère
   }
-  msg('src-msg','Reconnaissance du texte…');
-  const {data}=await S.workers[lang].recognize(canvas);
-  return {text:data.text,conf:data.confidence};
+  return new Promise(res=>P.wait.push(res));
+}
+function ocrRelease(lang,k){k.h.quiet=true;const P=ocrPool(lang),next=P.wait.shift();if(next)next(k);else P.free.push(k);}
+/* quiet : lecture en arrière-plan (analyse du livre, recherche des photos) — ne touche ni au message ni à la barre de la section 1 */
+async function ocrCanvas(canvas,quiet){
+  await loadTess();
+  const lang=$('lang').value, k=await ocrAcquire(lang,quiet);
+  try{
+    k.h.quiet=!!quiet;
+    if(!quiet) msg('src-msg','Reconnaissance du texte…');
+    const {data}=await k.w.recognize(canvas);
+    return {text:data.text,conf:data.confidence};
+  }finally{ocrRelease(lang,k);}
 }
 async function extract(){
   if(S.busy) return; S.busy=true;$('extract').disabled=true;progress(0.05);msg('src-msg','Extraction…');
@@ -1023,7 +1236,7 @@ function changed(){
   if(S.editing){F.forEach(k=>S.editing.r[k]=fv(k));renderBatch();saveBatch();}
 }
 document.querySelectorAll('[data-f]').forEach(e=>e.addEventListener('input',changed));
-$('reset').onclick=()=>{S.editing=null;$('edit-tag').textContent='';renderBatch();F.forEach(k=>{if(k!=='source'&&k!=='cats'&&k!=='tags')setF(k,'');});showFixes(null);setPhoto(null);msg('m-msg','');changed();window.scrollTo({top:0,behavior:'smooth'});};
+$('reset').onclick=()=>{S.editing=null;$('edit-tag').textContent='';showWeb(null);renderBatch();F.forEach(k=>{if(k!=='source'&&k!=='cats'&&k!=='tags')setF(k,'');});showFixes(null);setPhoto(null);msg('m-msg','');changed();window.scrollTo({top:0,behavior:'smooth'});};
 $('reparse').onclick=()=>{if($('raw').value.trim())applyText($('raw').value,$('dest').value);};
 
 /* ---------- photo ---------- */
@@ -1080,7 +1293,8 @@ async function api(path,opts){
 }
 $('m-show').onclick=()=>{const t=$('m-token'),show=t.type==='password';t.type=show?'text':'password';
   $('m-show').textContent=show?'Masquer':'Afficher';$('m-show').setAttribute('aria-pressed',String(show));};
-function saveSettings(){if($('m-save').checked)store('rt-mealie',{url:$('m-url').value,token:$('m-token').value});else store('rt-mealie',null);}
+function httpHint(){$('m-http').style.display=($('m-save').checked&&location.protocol==='http:'&&!/^(localhost|127\.0\.0\.1)$/.test(location.hostname))?'block':'none';}
+function saveSettings(){if($('m-save').checked)store('rt-mealie',{url:$('m-url').value,token:$('m-token').value});else store('rt-mealie',null);httpHint();}
 ['m-url','m-token','m-save'].forEach(id=>$(id).addEventListener('change',saveSettings));
 $('test').onclick=async()=>{
   msg('m-msg','Test…');
@@ -1130,16 +1344,41 @@ async function findExisting(r,key,names){
   }
   return {same:null,homonym};
 }
-async function createViaScraper(r){
+/* version du site : l'objet schema.org d'origine, avec le titre, la source, les étiquettes et les catégories du livre */
+function webLD(r,ld){
+  const list=s=>(s||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const o=Object.assign({},ld,{'@context':'https://schema.org','@type':'Recipe',name:(r.name||'').trim()||WEB.textOf(ld.name||'')||'Recette sans titre'});
+  const src=(r.source||'').trim();
+  o.description=[WEB.textOf(ld.description||''),src?'Source : '+src:''].filter(Boolean).join('\n\n');
+  const k=list(r.tags);if(k.length)o.keywords=k.join(', ');else delete o.keywords;
+  const c=list(r.cats);if(c.length)o.recipeCategory=c;else delete o.recipeCategory;
+  return o;
+}
+async function createViaScraper(r,ld){
   let slug=await api('/api/recipes/create/html-or-json',{method:'POST',headers:J,
-    body:JSON.stringify({includeTags:true,data:JSON.stringify(RP.buildLD(r,{inlineNotes:false,inlineSource:true}))})});
+    body:JSON.stringify({includeTags:true,data:JSON.stringify(ld?webLD(r,ld):RP.buildLD(r,{inlineNotes:false,inlineSource:true}))})});
   return typeof slug==='string'?slug.replace(/^"|"$/g,''):slug;
 }
-/* Envoie une recette. Résultat : {slug, action:'created'|'updated'|'skipped', renamed, warn, url} */
-async function sendRecipe(r,photo,assets){
-  const warn=[], policy=$('m-dup').value, key=recipeKey(r);
-  let slug, action='created', renamed='', existing=null;
+/* copies temporaires (mise à jour d'une recette) : notées ici pour être supprimées plus tard si l'envoi est interrompu */
+function tmpMark(slug,id){const l=(store('rt-tmp')||[]).filter(x=>x.slug!==slug);if(id)l.push({slug,id});store('rt-tmp',l.length?l:null);}
+async function sweepTmp(){
+  for(const t of store('rt-tmp')||[]){
+    try{const e=await api(rurl(t.slug));if(e&&e.id===t.id)await api(rurl(t.slug),{method:'DELETE'});tmpMark(t.slug);}
+    catch(e){if(e.net)return;if(/^Erreur 404/.test(e.message))tmpMark(t.slug);}
+  }
+}
+async function putPhoto(slug,photo){
+  const ext=((photo.type||'').split('/')[1]||'jpg').replace('jpeg','jpg');
+  const fd=new FormData();fd.append('image',photo,'photo.'+ext);fd.append('extension',ext);
+  await api(rurl(slug)+'/image',{method:'PUT',body:fd});
+}
+/* Envoie une recette. web = {url, ld} : la version du site est importée à la place de celle du livre.
+   Résultat : {slug, action:'created'|'updated'|'skipped', renamed, warn, url} */
+async function sendRecipe(r,photo,assets,web){
+  const warn=[], policy=$('m-dup').value, key=recipeKey(r), ld=(web&&web.ld)||null;
+  let slug, action='created', renamed='', existing=null, webImg='';
   r=Object.assign({},r);
+  if(ld){const w=WEB.ldToRec(ld);r.name=w.name||r.name;r.ing=w.ing;r.steps=w.steps;r.notes='';webImg=w.image;}
   if(policy!=='new'){
     let f=await findExisting(r,key,[r.name]);
     if(!f.same&&f.homonym&&$('m-homo').checked){
@@ -1161,9 +1400,10 @@ async function sendRecipe(r,photo,assets){
   if(existing){
     // mise à jour : Mealie structure une copie temporaire, on reporte son contenu sur la recette existante
     action='updated';slug=existing.slug;
-    const tmp=await createViaScraper(r);
+    const tmp=await createViaScraper(r,ld);
     try{
       const t=await api(rurl(tmp));
+      tmpMark(tmp,t.id);
       const tagIds=new Set((existing.tags||[]).map(x=>x.id));
       // si la recette existante porte un titre complété par sa source, on le garde
       const keep=(existing.name||'').startsWith(r.name.trim()+' (')||!r.name.trim();
@@ -1178,14 +1418,13 @@ async function sendRecipe(r,photo,assets){
       catch(e){ if(!/already exists/i.test(e.message)) throw e;   // le nouveau titre est pris par une autre recette : on garde l'ancien
         body.name=existing.name;up=await api(rurl(slug),{method:'PATCH',headers:J,body:JSON.stringify(body)});warn.push('titre inchangé (« '+r.name.trim()+' » est déjà pris)'); }
       if(up&&up.slug) slug=up.slug;
-    }finally{try{await api(rurl(tmp),{method:'DELETE'});}catch(e){warn.push('copie temporaire « '+tmp+' » à supprimer à la main');}}
+    }finally{try{await api(rurl(tmp),{method:'DELETE'});tmpMark(tmp);}catch(e){warn.push('copie temporaire « '+tmp+' » à supprimer (elle le sera au prochain envoi)');}}
   }else{
-    slug=await createViaScraper(r);
+    slug=await createViaScraper(r,ld);
   }
-  if(photo){
-    try{const ext=((photo.type||'').split('/')[1]||'jpg').replace('jpeg','jpg');
-      const fd=new FormData();fd.append('image',photo,'photo.'+ext);fd.append('extension',ext);
-      await api(rurl(slug)+'/image',{method:'PUT',body:fd});}
+  // photo du livre — sauf si la version du site apporte la sienne (Mealie la télécharge lui-même)
+  if(photo&&!webImg){
+    try{await putPhoto(slug,photo);}
     catch(e){warn.push('photo non envoyée ('+e.message.split('\n')[0]+')');}
   }
   let bad=0,last='',sentAssets=0;
@@ -1198,18 +1437,30 @@ async function sendRecipe(r,photo,assets){
   }
   if(bad) warn.push(bad+' pièce'+(bad>1?'s':'')+' jointe'+(bad>1?'s':'')+' non envoyée'+(bad>1?'s':'')+' ('+last+')');
   // notes, identité (pour reconnaître la recette plus tard) et affichage des pièces jointes
+  let cur=null;
   try{
-    const cur=await api(rurl(slug));
+    cur=await api(rurl(slug));
     const notes=(cur.notes||[]).filter(n=>!/^(Notes|Source)$/.test(n.title||''));
     if(r.notes.trim()) notes.push({title:'Notes',text:r.notes.trim()});
     const body={notes,extras:Object.assign({},cur.extras||{},{transposeur_cle:key,transposeur_source:(r.source||'').trim()})};
+    if(web&&web.url) body.orgURL=web.url;
     const titles=list=>{const t={};let i=0,h='';for(const l of list){const x=l.trim();if(!x)continue;if(/^#\s/.test(x)){h=x.replace(/^#\s*/,'');continue;}if(h){t[i]=h;h='';}i++;}return t;};
+    const lines=list=>list.filter(l=>l.trim()&&!/^#\s/.test(l.trim())).length;
     const ti=titles(r.ing), ts=titles(r.steps);
-    if(Object.keys(ti).length&&(cur.recipeIngredient||[]).length) body.recipeIngredient=cur.recipeIngredient.map((x,i)=>Object.assign({},x,{title:ti[i]||null}));
-    if(Object.keys(ts).length&&(cur.recipeInstructions||[]).length) body.recipeInstructions=cur.recipeInstructions.map((x,i)=>Object.assign({},x,{title:ts[i]||''}));
+    // les sous-titres ne sont posés que si Mealie a gardé le même découpage (sinon ils tomberaient au mauvais endroit)
+    if(Object.keys(ti).length&&(cur.recipeIngredient||[]).length===lines(r.ing)) body.recipeIngredient=cur.recipeIngredient.map((x,i)=>Object.assign({},x,{title:ti[i]||null}));
+    if(Object.keys(ts).length&&(cur.recipeInstructions||[]).length===lines(r.steps)) body.recipeInstructions=cur.recipeInstructions.map((x,i)=>Object.assign({},x,{title:ts[i]||''}));
     if(sentAssets||(cur.assets||[]).length) body.settings=Object.assign({},cur.settings||{},{showAssets:true});
     await api(rurl(slug),{method:'PATCH',headers:J,body:JSON.stringify(body)});
   }catch(e){warn.push('notes / repère de source non enregistrés ('+e.message.split('\n')[0]+')');}
+  if(webImg&&cur&&!cur.image){
+    // l'image du site n'a pas suivi : on la redemande à Mealie, sinon on prend la photo du livre
+    try{await api(rurl(slug)+'/image',{method:'POST',headers:J,body:JSON.stringify({url:webImg})});}
+    catch(e){
+      if(photo){try{await putPhoto(slug,photo);}catch(e2){warn.push('photo non envoyée ('+e2.message.split('\n')[0]+')');}}
+      else warn.push('image du site non récupérée');
+    }
+  }
   const m=store('rt-sent')||{};m[key]=slug;store('rt-sent',m);indexAdd(r.name,slug);
   if(!S.group){try{S.group=(await api('/api/users/self')).groupSlug||null;}catch(e){}}
   return {slug,action,renamed,warn,url:recipeLink(slug)};
@@ -1301,12 +1552,13 @@ const OLD_API='\nCe point d’accès (/api/recipes/create/html-or-json) existe d
 $('send').onclick=async()=>{
   const r=recipe();
   if(!r.name.trim()){msg('m-msg','Donnez un titre à la recette.','err');$('f-name').focus();return;}
+  if(S.editing&&S.editing.web&&!S.editing.pick){msg('m-msg','Cette recette existe aussi sur le site : choisissez d’abord la version à importer (« Version à importer », section 2).','err');$('w-pick').focus();return;}
   $('send').disabled=true;msg('m-msg','Création de la recette…');
   try{
     let att=[];
     try{att=(S.editing&&S.editing.epub)?[]:await sourceAssets(S.editing?S.editing.page:(S.pdf?S.pnum:0),S.editing);}catch(e){}
-    S.index=null;
-    const o=await sendRecipe(r,S.photo,att);
+    S.index=null;await sweepTmp();
+    const o=await sendRecipe(r,S.photo,att,webOf(S.editing));
     const m=$('m-msg');m.className='msg '+(o.warn.length?'warn':'ok');
     m.textContent={created:'Recette créée : ',updated:'Recette déjà présente, mise à jour : ',skipped:'Recette déjà présente dans Mealie, rien n’a été changé : '}[o.action];
     const a=document.createElement(o.url?'a':'b');if(o.url){a.href=o.url;a.target='_blank';a.rel='noopener';}a.textContent=o.slug;a.style.color='inherit';m.appendChild(a);
@@ -1323,7 +1575,27 @@ function bookTag(){return $('b-book').value.replace(/,/g,' ').replace(/\s+/g,' '
 function withBook(tags){const b=bookTag(),l=(tags||'').split(',').map(x=>x.trim()).filter(Boolean);
   if(b&&!l.some(x=>x.toLowerCase()===b.toLowerCase()))l.push(b);return l.join(', ');}
 function toRec(r){const o=Object.assign({},r);o.tags=withBook(r.tags);o.ing=(r.ing||'').split('\n');o.steps=(r.steps||'').split('\n');return o;}
-function saveBatch(){store('rt-batch',{book:$('b-book').value,items:S.batch.map(i=>Object.assign({},i,{text:undefined,photoBlob:undefined}))});}
+/* Sauvegarde du lot dans IndexedDB (pas de limite de taille gênante, photos choisies comprises) ; à défaut, dans localStorage sans les photos. */
+const IDB={
+  open(){return this.p||(this.p=new Promise((res,rej)=>{try{const q=indexedDB.open('transposeur',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);}catch(e){rej(e);}}));},
+  async get(k){const db=await this.open();return new Promise((res,rej)=>{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);});},
+  async set(k,v){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res();t.onerror=t.onabort=()=>rej(t.error);});}
+};
+let saveT=null;
+function saveBatch(){clearTimeout(saveT);saveT=setTimeout(flushBatch,250);}
+async function flushBatch(){
+  clearTimeout(saveT);
+  const data={book:$('b-book').value,site:$('b-site').value,items:S.batch.map(i=>Object.assign({},i,{text:undefined}))};
+  try{await IDB.set('batch',data);store('rt-batch',null);}
+  catch(e){
+    data.items=data.items.map(i=>Object.assign({},i,{photoBlob:undefined}));
+    try{localStorage.setItem('rt-batch',JSON.stringify(data));}
+    catch(e2){if(!S.saveWarned){S.saveWarned=true;msg('ph-msg','La liste n’a pas pu être sauvegardée dans ce navigateur (espace insuffisant ou navigation privée) : elle sera perdue si la page est rechargée.','warn');}}
+  }
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&saveT)flushBatch();});
+/* version du site à envoyer pour cette recette (si elle y a été trouvée et que l'utilisateur l'a choisie) */
+function webOf(it){return it&&it.web&&it.pick==='web'?it.web:null;}
 const lab=it=>it.label||('p. '+it.page);
 function count(s){return (s||'').split('\n').filter(x=>x.trim()&&!/^#\s/.test(x)).length;}
 function renderBatch(){
@@ -1334,19 +1606,29 @@ function renderBatch(){
     cb.onchange=()=>{it.sel=cb.checked;saveBatch();updateSendLabel();};
     const bt=document.createElement('button');if(S.editing===it)bt.className='cur';
     const t=document.createElement('b');t.textContent=(it.status!=='ok'&&RP.doubtfulTitle(it.r.name)?'⚠ ':'')+(it.r.name.trim()||'Sans titre');
-    const sm=document.createElement('small');sm.textContent=lab(it)+(it.img||it.photoBlob?' · photo':it.photoPage?' · photo p. '+it.photoPage:'')+' · '+count(it.r.ing)+' ingr. · '+count(it.r.steps)+' étapes';
+    const sm=document.createElement('small');sm.textContent=lab(it)+(it.img||it.photoBlob?' · photo':it.photoPage?' · photo p. '+it.photoPage:'')+' · '+count(it.r.ing)+' ingr. · '+count(it.r.steps)+' étapes'+(it.web?' · aussi sur le site':'');
     bt.append(t,sm);bt.onclick=()=>editItem(it);
     const st=document.createElement('span');st.className='st '+(it.status==='ok'?(it.warn?'warn':'ok'):it.status==='err'?'err':'');
-    st.textContent=it.status==='ok'?(({updated:'✓ mise à jour',skipped:'= déjà présente'})[it.act]||'✓ créée')+(it.warn?' — '+it.warn:''):it.status==='err'?'✗ '+(it.err||''):it.status==='run'?'…':'';
-    row.append(cb,bt,st);box.appendChild(row);
+    st.textContent=it.status==='ok'?(({updated:'✓ mise à jour',skipped:'= déjà présente'})[it.act]||'✓ créée')+(it.sentWeb?' (site)':'')+(it.warn?' — '+it.warn:''):it.status==='err'?'✗ '+(it.err||''):it.status==='run'?'…':'';
+    row.append(cb,bt);
+    if(it.web&&it.status!=='ok'){
+      // la recette est aussi sur le site : l'utilisateur choisit la version à importer
+      const sl=document.createElement('select');sl.className='pick'+(it.pick?'':' todo');sl.setAttribute('aria-label','Version à importer');
+      [['','Livre ou site ?'],['book','Livre'],['web','Site web']].forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;sl.appendChild(o);});
+      sl.value=it.pick||'';
+      sl.onchange=()=>{it.pick=sl.value;renderBatch();saveBatch();if(S.editing===it)showWeb(it);};
+      row.appendChild(sl);
+    }
+    row.appendChild(st);box.appendChild(row);
   });
   $('b-actions').style.display=S.batch.length?'flex':'none';
+  $('w-bar').style.display=S.batch.some(i=>i.web&&i.status!=='ok')?'flex':'none';
   updateSendLabel();
 }
 function updateSendLabel(){const n=S.batch.filter(i=>i.sel&&i.status!=='ok').length;$('b-send').textContent='Envoyer '+n+' recette'+(n>1?'s':'')+' dans Mealie';$('b-send').disabled=!n;}
 function editItem(it){
   S.editing=null;F.forEach(k=>setF(k,it.r[k]||''));showFixes(it.fixes);setPhoto(null);
-  S.editing=it;$('edit-tag').textContent='· lot, '+lab(it);changed();
+  S.editing=it;$('edit-tag').textContent='· lot, '+lab(it);changed();showWeb(it);
   if(it.epub){
     if(it.text){$('raw').value=it.text;$('raw-d').open=true;}
     if(it.img&&S.epub) S.epub.blob(it.img).then(b=>{if(S.editing===it)setPhoto(b);}).catch(()=>{});
@@ -1370,7 +1652,7 @@ async function pageTextRaw(n,method){
   if(method==='layer'||(method==='auto'&&S.layerOnly)) return '';
   const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);
   await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
-  const t=(await ocrCanvas(c)).text;progress(null);return t;
+  const t=(await ocrCanvas(c,true)).text;c.width=c.height=0;return t;
 }
 /* --- table des matières (PDF) --- */
 async function findToc(quiet){
@@ -1440,10 +1722,21 @@ $('b-scan').onclick=async()=>{
       if(!toc||toc.length<3){toc=null;msg('t-msg','Table des matières introuvable ou illisible aux pages indiquées : analyse sans table.','warn');}
     }
     let found=0;
-    for(let n=a;n<=b&&!S.stop;n++){
-      progress((n-a)/(b-a+1),'b-prog');msg('b-msg','Page '+n+' / '+b+'…');
-      try{texts[n]=await pageText(n);recs[n]=RP.parseRecipe(texts[n],{autofix});}catch(e){msg('b-msg','Page '+n+' : '+(e.message||e),'err');throw e;}
-      if(n%25===0) await new Promise(r=>setTimeout(r));
+    {
+      // plusieurs pages à la fois quand il faut océriser (un moteur OCR par page en cours)
+      S.ocrMax=($('method').value==='ocr'||!S.layerOnly)?OCR_MAX:1;
+      let next=a,done=0,fail=null;const total=b-a+1;
+      const run=async()=>{
+        while(!S.stop&&!fail){
+          const n=next++;if(n>b)return;
+          try{texts[n]=await pageText(n);recs[n]=RP.parseRecipe(texts[n],{autofix});}
+          catch(e){if(!fail){fail=e;msg('b-msg','Page '+n+' : '+(e.message||e),'err');}return;}
+          done++;progress(done/total,'b-prog');msg('b-msg','Page '+n+' / '+b+'…'+(S.ocrMax>1?' ('+S.ocrMax+' pages à la fois)':''));
+          if(done%25===0) await new Promise(r=>setTimeout(r));
+        }
+      };
+      try{await Promise.all(Array.from({length:S.ocrMax},run));}finally{S.ocrMax=1;}
+      if(fail) throw fail;
     }
     const ok=(n,rel)=>recs[n]&&!sent.has(n)&&RP.looksLikeRecipe(recs[n],rel);
     if(!toc){
@@ -1537,8 +1830,119 @@ $('b-scan').onclick=async()=>{
   }catch(e){if(!/err/.test($('b-msg').className))msg('b-msg',e.message||String(e),'err');}
   finally{S.busy=false;$('b-scan').disabled=false;$('extract').disabled=false;$('b-stop').style.display='none';progress(null,'b-prog');renderBatch();saveBatch();}
   pickPhotosBg().catch(()=>{});
+  if($('b-site').value.trim()) findOnSite(true);
 };
 $('b-stop').onclick=()=>{S.stop=true;};
+
+/* ---------- les mêmes recettes sur le site de l'auteur ou de l'éditeur ---------- */
+function relayErr(){
+  const e=new Error(/^https?:$/.test(location.protocol)
+    ?'Le relais web du conteneur est absent ou arrêté : il sert à lire le site depuis cette page.\n→ Sur l’hôte Proxmox, relancez la commande d’installation (elle met le conteneur à jour), puis vérifiez : bash install.sh status'
+    :'La recherche sur le web ne fonctionne que depuis la page servie par le conteneur (http://ADRESSE_DU_CONTENEUR), pas depuis un fichier ouvert sur l’appareil.');
+  e.relay=true;return e;
+}
+/* lit une page d'un site public à travers le relais du conteneur (le navigateur seul en est empêché par le CORS) */
+async function webGet(url){
+  if(!/^https?:$/.test(location.protocol)) throw relayErr();
+  let r;
+  try{r=await fetch('/web?u='+encodeURIComponent(url),{headers:{'X-Transposeur':'1'},cache:'no-store'});}catch(e){throw relayErr();}
+  if(r.headers.get('X-Web-Relay')!=='1') throw relayErr();
+  if(!r.ok){let j={};try{j=await r.json();}catch(e){} throw new Error('Site injoignable : '+(j.error||('erreur '+r.status)));}
+  return {status:+r.headers.get('X-Web-Status')||0,url:r.headers.get('X-Web-Url')||url,text:await r.text()};
+}
+/* la recette publiée à cette adresse : {url,name,ning,nsteps,ld}, ou null. Avec un titre : il doit lui ressembler. */
+async function webRecipe(url,title){
+  const r=await webGet(url);
+  if(r.status!==200) return null;
+  const ld=WEB.extractRecipeLD(r.text); if(!ld) return null;
+  const rec=WEB.ldToRec(ld), steps=rec.steps.filter(l=>!/^# /.test(l));
+  if(rec.ing.length<2||!steps.length) return null;
+  if(title&&WEB.sim(title,rec.name)<0.6) return null;
+  return {url:/^https?:\/\//i.test(r.url)?r.url:url,name:rec.name,ning:rec.ing.length,nsteps:steps.length,ld};
+}
+/* toutes les adresses du site, d'après son plan (sitemap) */
+async function siteIndex(site){
+  if(S.siteIdx&&S.siteIdx.origin===site.origin) return S.siteIdx;
+  let maps=[],lastErr='';
+  try{const rb=await webGet(site.origin+'/robots.txt');if(rb.status===200)maps=WEB.robotsSitemaps(rb.text);}
+  catch(e){if(e.relay)throw e;lastErr=e.message;}
+  const queue=maps.concat(['/sitemap.xml','/sitemap_index.xml','/wp-sitemap.xml'].map(p=>site.origin+p));
+  const seen=new Set(),urls=new Set();let n=0;
+  while(queue.length&&n<60&&urls.size<80000&&!S.webStop){
+    const u=queue.shift();if(seen.has(u))continue;seen.add(u);n++;
+    msg('w-msg','Lecture du plan du site '+site.host+'… '+urls.size+' pages');
+    let r;try{r=await webGet(u);}catch(e){if(e.relay)throw e;lastErr=e.message;continue;}
+    if(r.status!==200) continue;
+    const p=WEB.sitemapParse(r.text);
+    if(p.index) p.locs.filter(l=>WEB.sameSite(l,site)).map(l=>({l,k:WEB.childRank(l)})).filter(x=>x.k>=0).sort((x,y)=>y.k-x.k).forEach(x=>queue.push(x.l));
+    else for(const l of p.locs) if(WEB.sameSite(l,site)) urls.add(l);
+  }
+  if(!urls.size) throw new Error('Aucun plan du site (sitemap) lisible sur '+site.host+(lastErr?' ('+lastErr+')':'')+'.\nVous pouvez indiquer l’adresse d’une recette à la main : touchez la recette dans la liste, puis « Indiquer l’adresse de cette recette sur le web ».');
+  return S.siteIdx=Object.assign(WEB.buildIndex(urls),{origin:site.origin,n:urls.size});
+}
+async function findOnSite(auto){
+  if(S.webBusy){S.webStop=true;return;}
+  const site=WEB.normSite($('b-site').value);
+  if(!site){if(!auto)msg('w-msg','Indiquez l’adresse du site de l’auteur ou de l’éditeur (ex. www.exemple.com).','err');return;}
+  const items=S.batch.filter(i=>i.status!=='ok'&&i.r.name.trim()&&!(i.web&&i.web.manual));
+  if(!items.length){if(!auto)msg('w-msg','Analysez d’abord le livre : la recherche porte sur les recettes de la liste.','warn');return;}
+  S.webBusy=true;S.webStop=false;$('w-find').textContent='Arrêter';
+  try{
+    const idx=await siteIndex(site);
+    let done=0,next=0;
+    const worker=async()=>{
+      while(!S.webStop){
+        const it=items[next++];if(!it)return;
+        let w=null;
+        for(const c of WEB.match(it.r.name,idx).slice(0,2)){
+          try{w=await webRecipe(c.url,it.r.name);}catch(e){if(e.relay)throw e;}
+          if(w||S.webStop)break;
+        }
+        if(w){if(!it.web||it.web.url!==w.url){it.web=w;it.pick='';}}
+        else if(it.web&&!S.webStop){delete it.web;it.pick='';}
+        done++;msg('w-msg','Recherche sur '+site.host+'… '+done+' / '+items.length);
+        if(done%5===0) renderBatch();
+      }
+    };
+    await Promise.all([worker(),worker(),worker()]);
+    const n=S.batch.filter(i=>i.web&&i.status!=='ok').length;
+    msg('w-msg',(S.webStop?'Recherche interrompue. ':'')+(n?n+' recette'+(n>1?'s':'')+' de la liste '+(n>1?'existent':'existe')+' aussi sur '+site.host+'. Pour chacune, choisissez « Livre » ou « Site web » dans la liste (ou pour toutes d’un coup, ci-dessous) avant l’envoi. Touchez une recette pour voir sa page sur le site.'
+      :'Aucune recette de la liste n’a été retrouvée sur '+site.host+' ('+idx.n+' pages du site examinées).'),n?'warn':'');
+  }catch(e){msg('w-msg',e.message||String(e),'err');}
+  finally{S.webBusy=false;$('w-find').textContent='Chercher sur le site';renderBatch();saveBatch();if(S.editing)showWeb(S.editing);}
+}
+$('w-find').onclick=()=>findOnSite(false);
+$('b-site').addEventListener('change',()=>{S.siteIdx=null;saveBatch();});
+$('w-all').onchange=()=>{const v=$('w-all').value;if(!v)return;S.batch.forEach(i=>{if(i.web&&i.status!=='ok')i.pick=v;});$('w-all').value='';renderBatch();saveBatch();if(S.editing)showWeb(S.editing);};
+/* encadré « aussi sur le site » de la recette en cours de vérification */
+function showWeb(it){
+  const box=$('web-box');
+  if(!it){box.style.display='none';return;}
+  box.style.display='block';$('w-man').open=false;
+  const info=$('web-info'), w=it.web;info.textContent='';info.className='msg';
+  $('web-pick-row').style.display=w?'flex':'none';
+  $('w-url').value=w?w.url:'';
+  if(!w) return;
+  info.append('Cette recette existe aussi sur le site : ');
+  const a=document.createElement('a');a.href=w.url;a.target='_blank';a.rel='noopener';a.style.color='inherit';a.textContent='« '+(w.name||w.url)+' »';info.append(a);
+  info.append(' — '+w.ning+' ingrédient'+(w.ning>1?'s':'')+' et '+w.nsteps+' étape'+(w.nsteps>1?'s':'')+' sur le site, '+count(it.r.ing)+' et '+count(it.r.steps)+' dans le livre.'
+    +(it.pick==='web'?'\nLa version du site sera importée telle quelle (avec sa photo) ; les champs ci-dessus ne sont pas envoyés.':''));
+  $('w-pick').value=it.pick||'';
+}
+$('w-pick').onchange=()=>{const it=S.editing;if(!it||!it.web)return;it.pick=$('w-pick').value;renderBatch();saveBatch();showWeb(it);};
+$('w-rm').onclick=()=>{const it=S.editing;if(!it)return;delete it.web;it.pick='';renderBatch();saveBatch();showWeb(it);};
+$('w-check').onclick=async()=>{
+  const it=S.editing;if(!it)return;
+  const u=$('w-url').value.trim();
+  if(!/^https?:\/\//i.test(u)){msg('web-info','Indiquez une adresse complète (https://…).','err');return;}
+  msg('web-info','Lecture de la page…');
+  try{
+    const w=await webRecipe(u);
+    if(S.editing!==it) return;
+    if(!w){msg('web-info','Aucune recette lisible à cette adresse (la page ne décrit pas de recette au format schema.org).','err');return;}
+    w.manual=true;it.web=w;it.pick='';renderBatch();saveBatch();showWeb(it);
+  }catch(e){msg('web-info',e.message||String(e),'err');}
+};
 
 /* ---------- EPUB ---------- */
 async function unzip(buf){
@@ -1742,15 +2146,22 @@ async function scanEpub(){
       :'Aucune recette détectée dans cet EPUB.'+(E.drm?' Il semble protégé (DRM) : son contenu n’est pas lisible.':''),found?'ok':'err');
   }catch(e){msg('b-msg',e.message||String(e),'err');}
   finally{S.busy=false;$('b-scan').disabled=false;$('b-stop').style.display='none';progress(null,'b-prog');renderBatch();saveBatch();}
+  if(found&&$('b-site').value.trim()) findOnSite(true);
 }
 $('b-all').onclick=()=>{const on=S.batch.some(i=>!i.sel&&i.status!=='ok');S.batch.forEach(i=>{if(i.status!=='ok')i.sel=on;});renderBatch();saveBatch();};
 $('b-clear').onclick=()=>{S.pickRun=(S.pickRun||0)+1;msg('ph-msg','');S.batch=[];S.editing=null;$('edit-tag').textContent='';renderBatch();saveBatch();msg('b-msg','Liste vidée.');};
-$('b-again').onclick=()=>{S.batch.forEach(i=>{if(i.status==='ok'||i.status==='err'){i.status='';i.warn='';i.err='';i.sel=true;}});renderBatch();saveBatch();
+$('b-again').onclick=()=>{S.batch.forEach(i=>{if(i.status==='ok'||i.status==='err'){i.status='';i.warn='';i.err='';i.sentWeb=false;i.sel=true;}});renderBatch();saveBatch();
   msg('b-msg','Les recettes déjà envoyées sont de nouveau cochées. Selon le réglage « Si la recette est déjà dans Mealie », elles seront mises à jour, ignorées ou copiées.');};
 $('b-book').addEventListener('change',saveBatch);
 $('b-send').onclick=async()=>{
   const todo=S.batch.filter(i=>i.sel&&i.status!=='ok');
   if(!todo.length||S.busy) return;
+  const und=todo.filter(i=>i.web&&!i.pick);
+  if(und.length){
+    msg('b-msg',und.length+' recette'+(und.length>1?'s existent':' existe')+' aussi sur le site : choisissez pour chacune « Livre » ou « Site web » dans la liste (menu en rouge), ou pour toutes d’un coup juste au-dessus de la liste. Rien n’a été envoyé.','err');
+    const e=$('b-list').querySelector('select.todo');if(e)e.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
   const pdfItems=todo.filter(i=>!i.epub), wantImg=$('m-img').checked||$('m-att').value!=='none';
   if(pdfItems.length&&wantImg){
     const doc=S.pdf&&S.pdf.fingerprints?S.pdf.fingerprints[0]:null;
@@ -1760,6 +2171,7 @@ $('b-send').onclick=async()=>{
   S.busy=true;S.stop=false;$('b-send').disabled=true;$('b-stop').style.display='';S.index=null;
   let ok=0,ko=0,fatal='';const cnt={created:0,updated:0,skipped:0};
   try{
+    try{await sweepTmp();}catch(e){}
     for(let k=0;k<todo.length&&!S.stop;k++){
       const it=todo[k];progress(k/todo.length,'b-prog');msg('b-msg','Envoi '+(k+1)+' / '+todo.length+'…');
       if(!it.r.name.trim()){it.status='err';it.err='titre manquant';ko++;renderBatch();continue;}
@@ -1767,8 +2179,8 @@ $('b-send').onclick=async()=>{
       try{let ph=null;if(it.img&&S.epub){try{ph=await S.epub.blob(it.img);}catch(e){}}
         if(!it.epub){try{ph=await itemPhoto(it);}catch(e){}}
         let att=[];if(!it.epub){try{att=await sourceAssets(it.page,it);}catch(e){}}
-        const o=await sendRecipe(toRec(it.r),ph,att);
-        it.status='ok';it.slug=o.slug;it.act=o.action;it.warn=(o.renamed?['titre : « '+o.renamed+' »']:[]).concat(o.warn).join(' ; ');ok++;cnt[o.action]++;}
+        const o=await sendRecipe(toRec(it.r),ph,att,webOf(it));
+        it.status='ok';it.slug=o.slug;it.act=o.action;it.sentWeb=!!webOf(it);it.warn=(o.renamed?['titre : « '+o.renamed+' »']:[]).concat(o.warn).join(' ; ');ok++;cnt[o.action]++;}
       catch(e){it.status='err';it.err=e.net?'serveur injoignable':e.message.split('\n')[0];ko++;
         if(e.net||/401|40[45]/.test(e.message)){fatal=/^Erreur 40[45]/.test(e.message)?e.message+OLD_API:e.message;break;}}
       renderBatch();saveBatch();
@@ -1777,7 +2189,7 @@ $('b-send').onclick=async()=>{
   msg('b-msg',fatal?'Envoi interrompu après '+ok+' recette'+(ok>1?'s':'')+'.\n'+fatal+'\nLes recettes déjà envoyées ne seront pas renvoyées.':ok+' recette'+(ok>1?'s':'')+' traitée'+(ok>1?'s':'')+' : '+cnt.created+' créée'+(cnt.created>1?'s':'')+', '+cnt.updated+' mise'+(cnt.updated>1?'s':'')+' à jour, '+cnt.skipped+' ignorée'+(cnt.skipped>1?'s':'')+(ko?' ; '+ko+' en erreur (voir la liste).':'.'),fatal||ko?'err':'ok');
 };
 $('b-dl').onclick=()=>{
-  const arr=S.batch.filter(i=>i.sel).map(i=>RP.buildLD(toRec(i.r),{inlineNotes:true}));
+  const arr=S.batch.filter(i=>i.sel).map(i=>webOf(i)?webLD(toRec(i.r),i.web.ld):RP.buildLD(toRec(i.r),{inlineNotes:true}));
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(arr,null,2)],{type:'application/json'}));a.download='lot-recettes.json';a.click();
 };
 $('copy').onclick=async()=>{
@@ -1811,14 +2223,22 @@ $('extract').onclick=extract;
 /* ---------- restauration ---------- */
 const d=store('rt-draft');if(d)F.forEach(k=>{if(d[k])setF(k,d[k]);});
 const ms=store('rt-mealie');if(ms){$('m-url').value=ms.url||'';$('m-token').value=ms.token||'';$('m-save').checked=true;}
-const sb=store('rt-batch');if(sb){$('b-book').value=sb.book||'';S.batch=(sb.items||[]).map(i=>{if(i.status==='run')i.status='';return i;});renderBatch();
-  if(S.batch.some(i=>!i.epub&&i.status!=='ok')) msg('b-msg','Liste restaurée. Rechargez le PDF du livre (section 1) avant d’envoyer : il est nécessaire pour joindre les photos et les pages d’origine.','warn');}
+httpHint();
+if(VERSION) $('ver').textContent='Version '+VERSION;
+(async()=>{
+  let sb=null;
+  try{sb=await IDB.get('batch');}catch(e){}
+  if(!sb) sb=store('rt-batch');
+  if(!sb||S.batch.length) return;
+  $('b-book').value=sb.book||'';$('b-site').value=sb.site||'';
+  S.batch=(sb.items||[]).map(i=>{if(i.status==='run')i.status='';return i;});renderBatch();
+  if(S.batch.some(i=>!i.epub&&i.status!=='ok')) msg('b-msg','Liste restaurée. Rechargez le PDF du livre (section 1) avant d’envoyer : il est nécessaire pour joindre les photos et les pages d’origine.','warn');
+})();
 probeSame().then(ok=>{
   if(ok) msg('m-msg','Mealie détecté derrière cette page (version '+S.mver+') : seul le jeton API est requis.','ok');
   else if(S.relay!=='local') msg('m-msg',netHelp(''),'warn');
 });
 changed();
-window.__RT={S,showPage,extract,openFile};
 })();
 </script>
 </body>
