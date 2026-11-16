@@ -1,5 +1,13 @@
 # Journal des changements
 
+## 2026.11.16-2
+
+- **Onglets** : « Livre », « Recette » et « Réglages ». Sur grand écran, Livre et Recette restent côte à côte.
+- La connexion à Mealie, les options d'envoi et l'import manuel JSON sont dans « Réglages ». Une ligne sous le titre indique l'état de la connexion ; sans jeton, la page s'ouvre sur les Réglages.
+- La connexion est vérifiée au chargement, et les options d'envoi sont mémorisées sur l'appareil.
+- Options avancées repliées sous « Plus d'options » : méthode de lecture, langue de l'OCR, pages à analyser, pages de la table des matières.
+- **Comparaison livre / site côte à côte** pour les recettes trouvées en ligne, avec les ingrédients sans équivalent mis en évidence.
+
 ## 2026.11.16-1
 
 Nouveautés

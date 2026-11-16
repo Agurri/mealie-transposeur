@@ -38,10 +38,12 @@ Avec `--https`, Caddy utilise son certificat interne : le navigateur demande de 
 
 ## Utilisation
 
-1. Ouvrez `http://ADRESSE_DU_CONTENEUR` et collez votre jeton API Mealie (Profil → Jetons API).
-2. Chargez un PDF ou un EPUB.
+La page a trois onglets : **Livre** (source et liste des recettes), **Recette** (vérification et correction) et **Réglages** (connexion à Mealie, options d'envoi). Sur grand écran, Livre et Recette sont côte à côte.
+
+1. Ouvrez `http://ADRESSE_DU_CONTENEUR`. La page s'ouvre sur les Réglages : collez votre jeton API Mealie (Profil → Jetons API) et testez la connexion.
+2. Onglet Livre : chargez un PDF ou un EPUB.
 3. « Analyser le livre » : les recettes sont repérées à l'aide de la table des matières ou de l'index.
-4. Vérifiez la liste, corrigez au besoin, puis « Envoyer dans Mealie ».
+4. Vérifiez la liste, touchez une recette pour la corriger, puis « Envoyer dans Mealie ».
 
 Une recette déjà présente dans Mealie est mise à jour plutôt que dupliquée ; deux recettes différentes du même nom reçoivent leur source dans le titre.
 
@@ -51,7 +53,7 @@ Certaines recettes d'un livre sont aussi sur le site de son auteur ou de son éd
 
 1. Dans « Lot — livre entier », indiquez l'adresse du site (par exemple `www.exemple.com`).
 2. Après l'analyse du livre, ou avec « Chercher sur le site », chaque titre est recherché dans le plan du site (sitemap), puis la page trouvée est lue pour vérifier qu'elle contient bien cette recette.
-3. Les recettes retrouvées portent un menu « Livre ou site ? » dans la liste. Le choix est obligatoire, recette par recette ou pour toutes d'un coup : rien n'est envoyé tant qu'il manque.
+3. Les recettes retrouvées portent un menu « Livre ou site ? » dans la liste ; touchez-en une pour comparer les deux versions côte à côte. Le choix est obligatoire, recette par recette ou pour toutes d'un coup : rien n'est envoyé tant qu'il manque.
 
 Avec « Site web », la recette du site est importée telle quelle, avec sa photo et son adresse d'origine ; l'étiquette du livre, la source (livre et page) et les pages d'origine en pièces jointes sont conservées. Si le site n'a pas de plan lisible, touchez une recette puis « Indiquer l'adresse de cette recette sur le web ».
 

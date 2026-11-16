@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<meta name="transposeur-version" content="2026.11.16-1">
+<meta name="transposeur-version" content="2026.11.16-2">
 <title>Transposeur de recettes → Mealie</title>
 <style>
 :root{
@@ -71,6 +71,34 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
 .brow select.pick.todo{border-color:var(--accent);color:var(--accent);font-weight:600}
 #ver{white-space:nowrap}
 #web-box{display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:4px}
+/* onglets : Livre · Recette · Réglages (sur grand écran, Livre et Recette restent côte à côte) */
+#tabs{position:sticky;top:0;z-index:5;display:flex;gap:6px;padding:8px 16px;max-width:1400px;margin:0 auto;background:var(--bg);border-bottom:1px solid var(--line)}
+#tabs button{flex:1;max-width:240px;min-height:40px;padding:6px 10px}
+.t-wide{display:none}
+main>.col{display:none}
+body[data-tab=book] #p-book,body[data-tab=rec] #p-rec,body[data-tab=set] #p-set{display:grid}
+body[data-tab=book] #tab-book,body[data-tab=rec] #tab-rec,body[data-tab=set] #tab-set{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+@media (min-width:1000px){
+  body[data-tab=book] #p-rec,body[data-tab=rec] #p-book{display:grid}
+  body[data-tab=rec] #tab-book{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  body[data-tab=set] main{grid-template-columns:minmax(0,760px);justify-content:center}
+  #tab-rec,.t-narrow{display:none}
+  .t-wide{display:inline}
+}
+button.link{background:none;border:0;padding:0;min-height:0;font:inherit;font-size:.85rem;color:var(--muted);text-decoration:underline;text-align:left;display:inline}
+button.link.ok{color:var(--ok);text-decoration:none} button.link.warn{color:var(--warn)}
+.card h2.plain{font-size:1rem}
+/* comparaison livre / site */
+#web-cmp{display:none;margin-top:10px}
+#web-cmp .cmp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;font-size:.82rem;line-height:1.35}
+#web-cmp .side{min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg)}
+#web-cmp .side.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+#web-cmp h3{font:700 .85rem var(--sans);margin:0 0 6px}
+#web-cmp h4{font:600 .75rem var(--sans);margin:8px 0 4px;color:var(--muted)}
+#web-cmp ul,#web-cmp ol{margin:0;padding-left:1.25em}
+#web-cmp li{margin:0 0 4px;overflow-wrap:anywhere}
+#web-cmp li.head{list-style:none;margin-left:-1.25em;font-weight:700}
+#web-cmp li.diff{color:var(--accent);font-weight:600}
 .brow input{width:20px;height:20px;flex:none}
 .brow button{flex:1;min-width:0;text-align:left;justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:0;padding:6px 10px;border-color:transparent;background:none}
 .brow button.cur{border-color:var(--accent)}
@@ -81,14 +109,21 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
 #edit-tag{font:600 .75rem var(--sans);color:var(--accent)}
 </style>
 </head>
-<body>
+<body data-tab="book">
 <header>
   <h1>Transposeur de recettes <span>→ Mealie</span></h1>
   <p>PDF, EPUB, numérisation ou photo → texte → recette structurée → import dans Mealie. Tout se passe dans votre navigateur. <span id="ver"></span></p>
+  <p><button id="conn" type="button" class="link"></button></p>
 </header>
 
+<nav id="tabs" aria-label="Sections de la page">
+  <button id="tab-book" type="button" data-tab="book"><span class="t-narrow">Livre</span><span class="t-wide">Livre et recette</span></button>
+  <button id="tab-rec" type="button" data-tab="rec">Recette</button>
+  <button id="tab-set" type="button" data-tab="set">Réglages<span id="tab-set-st"></span></button>
+</nav>
+
 <main>
-  <div class="col">
+  <div class="col" id="p-book">
     <section class="card" id="src-card">
       <h2><i>1</i> Source</h2>
       <div id="drop">
@@ -123,20 +158,27 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
             <option value="notes">Notes (ajouter)</option>
             <option value="desc">Description</option>
           </select></div>
-        <div class="grow"><label for="method">Méthode</label>
-          <select id="method">
-            <option value="auto">Auto</option>
-            <option value="layer">Texte intégré au PDF</option>
-            <option value="ocr">OCR (Tesseract)</option>
-          </select></div>
-        <div class="grow"><label for="lang">Langue OCR</label>
-          <select id="lang"><option value="fra">Français</option><option value="fra+eng">Français + anglais</option><option value="eng">Anglais</option></select></div>
       </div>
       <div class="row" style="margin-top:10px">
         <button id="extract" class="primary grow" disabled>Extraire la page</button>
       </div>
       <div id="prog"><b></b></div>
       <div id="src-msg" class="msg"></div>
+
+      <details id="adv-src">
+        <summary>Plus d’options (méthode de lecture, langue de l’OCR)</summary>
+        <div class="row">
+          <div class="grow"><label for="method">Méthode</label>
+            <select id="method">
+              <option value="auto">Auto</option>
+              <option value="layer">Texte intégré au PDF</option>
+              <option value="ocr">OCR (Tesseract)</option>
+            </select></div>
+          <div class="grow"><label for="lang">Langue OCR</label>
+            <select id="lang"><option value="fra">Français</option><option value="fra+eng">Français + anglais</option><option value="eng">Anglais</option></select></div>
+        </div>
+        <div class="hint">Ces deux réglages valent aussi pour l’analyse du livre entier.</div>
+      </details>
 
       <details id="raw-d">
         <summary>Texte brut (modifiable — ou collez ici un texte déjà océrisé)</summary>
@@ -151,12 +193,14 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
       <input id="b-book" type="text" placeholder="Titre du livre de recettes">
       <label for="b-site">Site de l’auteur ou de l’éditeur <span style="font-weight:400">(facultatif : pour retrouver les mêmes recettes en ligne)</span></label>
       <div class="row"><input id="b-site" type="url" class="grow" style="width:auto" placeholder="www.exemple.com" autocomplete="off"><button id="w-find" type="button">Chercher sur le site</button></div>
-      <div class="grid2">
-        <div><label for="b-from">De la page</label><input id="b-from" type="number" min="1"></div>
-        <div><label for="b-to">À la page</label><input id="b-to" type="number" min="1"></div>
-      </div>
       <label class="check"><input id="t-use" type="checkbox" checked> Se fier à la table des matières (ou à l’index des recettes) pour choisir les recettes et leurs titres</label>
-      <div id="t-box">
+      <div id="t-msg" class="msg"></div>
+      <details id="adv-lot">
+        <summary>Plus d’options (pages à analyser, pages de la table des matières)</summary>
+        <div class="grid2">
+          <div><label for="b-from">Analyser de la page</label><input id="b-from" type="number" min="1"></div>
+          <div><label for="b-to">à la page</label><input id="b-to" type="number" min="1"></div>
+        </div>
         <div class="grid3">
           <div><label for="t-from">Table : de la page</label><input id="t-from" type="number" min="1"></div>
           <div><label for="t-to">à la page</label><input id="t-to" type="number" min="1"></div>
@@ -164,8 +208,7 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
         </div>
         <div class="hint">Décalage = page du PDF − numéro imprimé. Laissez vide pour le calcul automatique.</div>
         <div class="row" style="margin-top:8px"><button id="t-find" disabled>Détecter la table</button></div>
-      </div>
-      <div id="t-msg" class="msg"></div>
+      </details>
       <div class="row" style="margin-top:10px">
         <button id="b-scan" class="primary grow" disabled>Analyser le livre</button>
         <button id="b-stop" style="display:none">Arrêter</button>
@@ -189,7 +232,7 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
     </section>
   </div>
 
-  <div class="col">
+  <div class="col" id="p-rec">
     <section class="card" id="rec-card">
       <h2><i>2</i> Recette <span id="edit-tag"></span><span style="flex:1"></span><button id="reset" style="min-height:34px;padding:5px 10px;font-size:.8rem">Nouvelle recette</button></h2>
       <label for="f-name">Titre</label><input id="f-name" type="text" data-f>
@@ -224,6 +267,7 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
           <select id="w-pick" class="grow" style="width:auto"><option value="">Choisir…</option><option value="book">Celle du livre (ci-dessus)</option><option value="web">Celle du site web</option></select>
           <button id="w-rm" type="button">Oublier le site</button>
         </div>
+        <div id="web-cmp"></div>
         <details id="w-man">
           <summary>Indiquer l’adresse de cette recette sur le web</summary>
           <div class="row" style="margin-top:8px"><input id="w-url" type="url" class="grow" style="width:auto" placeholder="https://…" autocomplete="off"><button id="w-check" type="button">Vérifier</button></div>
@@ -231,12 +275,29 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
       </div>
     </section>
 
+    <section class="card" id="send-card">
+      <div class="row">
+        <button id="send" class="primary grow">Envoyer cette recette dans Mealie</button>
+      </div>
+      <div id="m-msg" class="msg"></div>
+    </section>
+  </div>
+
+  <div class="col" id="p-set">
     <section class="card">
-      <h2><i>3</i> Mealie</h2>
+      <h2 class="plain">Connexion à Mealie</h2>
       <label for="m-url" id="m-url-lab">Adresse du serveur</label><input id="m-url" type="url" placeholder="https://mealie.exemple.com" autocomplete="off">
       <label for="m-token">Jeton API <span style="font-weight:400">(Mealie → Profil → Jetons API)</span></label><div class="row"><input id="m-token" type="password" autocomplete="off" class="grow" style="width:auto"><button id="m-show" type="button" aria-pressed="false">Afficher</button></div>
       <label class="check"><input id="m-save" type="checkbox"> Mémoriser sur cet appareil</label>
       <div id="m-http" class="hint" style="display:none">Cette page est servie en HTTP : le jeton mémorisé circule en clair sur votre réseau local. Pour chiffrer la connexion, sur l’hôte Proxmox : bash install.sh update --https</div>
+      <div class="row" style="margin-top:10px">
+        <button id="test" class="primary grow">Tester la connexion</button>
+      </div>
+      <div id="c-msg" class="msg"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="plain">Envoi des recettes</h2>
       <label for="m-dup">Si la recette est déjà dans Mealie</label>
       <select id="m-dup">
         <option value="update">La mettre à jour (contenu, photo, pièces jointes) — pas de doublon</option>
@@ -251,13 +312,12 @@ pre#json{background:var(--bg);border:1px solid var(--line);border-radius:8px;pad
         <option value="page">Page de la recette seulement</option>
         <option value="none">Aucune</option>
       </select>
-      <div class="row" style="margin-top:10px">
-        <button id="send" class="primary grow">Envoyer dans Mealie</button>
-        <button id="test">Tester</button>
-      </div>
-      <div id="m-msg" class="msg"></div>
-      <details open>
-        <summary>Import manuel (JSON schema.org)</summary>
+      <div class="hint">Ces choix sont mémorisés sur cet appareil.</div>
+    </section>
+
+    <section class="card">
+      <details id="json-d" style="margin-top:0">
+        <summary>Import manuel de la recette en cours (JSON schema.org)</summary>
         <div class="row" style="margin-top:8px">
           <button id="copy">Copier le JSON</button>
           <button id="dl">Télécharger .json</button>
@@ -965,6 +1025,15 @@ const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d',{willReadFrequently:false});
 const S={pdf:null,page:null,viewport:null,pnum:1,rot:0,img:null,sel:null,hasLayer:false,photo:null,pools:{},ocrMax:1,group:null,busy:false,batch:[],editing:null,stop:false,epub:null,tcache:new Map(),pscore:new Map(),tocOff:0};
 
+/* ---------- onglets ---------- */
+function setTab(t,scroll){
+  document.body.dataset.tab=t;
+  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===t)));
+  if(scroll!==false) window.scrollTo({top:0});
+}
+document.querySelectorAll('#tabs button').forEach(b=>{b.onclick=()=>setTab(b.dataset.tab);});
+const wide=()=>window.matchMedia('(min-width:1000px)').matches;
+
 /* ---------- utilitaires ---------- */
 function msg(id,text,cls){const e=$(id);e.textContent=text||'';e.className='msg'+(cls?' '+cls:'');}
 function progress(p,id){const e=$(id||'prog');if(p==null){e.style.display='none';return;}e.style.display='block';e.firstElementChild.style.width=Math.round(p*100)+'%';}
@@ -1175,7 +1244,7 @@ async function ocrAcquire(lang,quiet){
   return new Promise(res=>P.wait.push(res));
 }
 function ocrRelease(lang,k){k.h.quiet=true;const P=ocrPool(lang),next=P.wait.shift();if(next)next(k);else P.free.push(k);}
-/* quiet : lecture en arrière-plan (analyse du livre, recherche des photos) — ne touche ni au message ni à la barre de la section 1 */
+/* quiet : lecture en arrière-plan (analyse du livre, recherche des photos) — ne touche ni au message ni à la barre de la carte « Source » */
 async function ocrCanvas(canvas,quiet){
   await loadTess();
   const lang=$('lang').value, k=await ocrAcquire(lang,quiet);
@@ -1198,7 +1267,8 @@ async function extract(){
     if(!text.trim()) throw new Error('Aucun texte trouvé dans '+(S.sel?'la zone':'la page')+'.');
     $('raw').value=text;$('raw-d').open=true;
     applyText(text,$('dest').value);
-    msg('src-msg',info+' · '+text.trim().split(/\s+/).length+' mots. Vérifiez la recette à droite'+(canLayer&&method!=='ocr'?' — si le texte est mauvais, essayez la méthode « OCR » ou une zone.':'.'),'ok');
+    msg('src-msg',info+' · '+text.trim().split(/\s+/).length+' mots. Vérifiez la recette'+(wide()?' à droite':' (onglet Recette)')+(canLayer&&method!=='ocr'?' — si le texte est mauvais, essayez la méthode « OCR » (Plus d’options) ou une zone.':'.'),'ok');
+    if($('dest').value==='auto'&&!wide()) setTab('rec');
   }catch(e){msg('src-msg',e.message||String(e),'err');}
   finally{S.busy=false;$('extract').disabled=false;progress(null);}
 }
@@ -1233,7 +1303,7 @@ function recipe(){
 function changed(){
   $('json').textContent=JSON.stringify(RP.buildLD(recipe(),{inlineNotes:true}),null,2);
   const d={};F.forEach(k=>d[k]=fv(k));store('rt-draft',d);
-  if(S.editing){F.forEach(k=>S.editing.r[k]=fv(k));renderBatch();saveBatch();}
+  if(S.editing){F.forEach(k=>S.editing.r[k]=fv(k));renderBatch();saveBatch();if(S.editing.web)renderCmp(S.editing);}
 }
 document.querySelectorAll('[data-f]').forEach(e=>e.addEventListener('input',changed));
 $('reset').onclick=()=>{S.editing=null;$('edit-tag').textContent='';showWeb(null);renderBatch();F.forEach(k=>{if(k!=='source'&&k!=='cats'&&k!=='tags')setF(k,'');});showFixes(null);setPhoto(null);msg('m-msg','');changed();window.scrollTo({top:0,behavior:'smooth'});};
@@ -1279,7 +1349,7 @@ async function api(path,opts){
   const tok=$('m-token').value.trim();
   if(!S.same) await probeSame();
   const b=S.same?'':base();
-  if(!tok) throw new Error('Indiquez le jeton API.');
+  if(!tok) throw new Error('Indiquez le jeton API (onglet Réglages).');
   if(!S.same&&!b){const er=new Error(netHelp(''));er.net=true;throw er;}
   let res;
   try{res=await fetch(b+path,Object.assign({},opts,{headers:Object.assign({Authorization:'Bearer '+tok,Accept:'application/json'},opts.headers||{})}));}
@@ -1296,11 +1366,37 @@ $('m-show').onclick=()=>{const t=$('m-token'),show=t.type==='password';t.type=sh
 function httpHint(){$('m-http').style.display=($('m-save').checked&&location.protocol==='http:'&&!/^(localhost|127\.0\.0\.1)$/.test(location.hostname))?'block':'none';}
 function saveSettings(){if($('m-save').checked)store('rt-mealie',{url:$('m-url').value,token:$('m-token').value});else store('rt-mealie',null);httpHint();}
 ['m-url','m-token','m-save'].forEach(id=>$(id).addEventListener('change',saveSettings));
-$('test').onclick=async()=>{
-  msg('m-msg','Test…');
-  try{const u=await api('/api/users/self');S.group=u.groupSlug||null;msg('m-msg','Connecté : '+(u.fullName||u.username||'OK')+(S.same?' — par le relais de ce serveur (Mealie '+S.mver+').':' — en accès direct.'),'ok');}
-  catch(e){msg('m-msg',e.message,'err');}
-};
+/* état de la connexion : une ligne sous le titre et une marque sur l'onglet Réglages */
+function connState(st,text){
+  S.conn=st;const e=$('conn');e.textContent=text;e.className='link'+(st==='ok'?' ok':st==='err'?' warn':'');
+  $('tab-set-st').textContent=st==='ok'?' ✓':st==='wait'?'':' ⚠';
+}
+async function checkConn(verbose){
+  if(!$('m-token').value.trim()){
+    connState('no','Mealie : jeton API à saisir — ouvrir les Réglages');
+    if(verbose) msg('c-msg','Indiquez le jeton API.','err');
+    return false;
+  }
+  if(verbose) msg('c-msg','Test…');
+  try{
+    const u=await api('/api/users/self'), who=u.fullName||u.username||'';
+    S.group=u.groupSlug||null;
+    connState('ok','Mealie : connecté'+(who?' ('+who+')':'')+' ✓');
+    msg('c-msg','Connecté'+(who?' : '+who:'')+(S.same?' — par le relais de ce serveur (Mealie '+S.mver+').':' — en accès direct.')+(verbose?' Vous pouvez passer à l’onglet Livre.':''),'ok');
+    return true;
+  }catch(e){
+    connState('err','Mealie : connexion impossible — ouvrir les Réglages');
+    msg('c-msg',e.message,'err');
+    return false;
+  }
+}
+$('test').onclick=()=>checkConn(true);
+$('conn').onclick=()=>setTab('set');
+['m-url','m-token'].forEach(id=>$(id).addEventListener('change',()=>{S.same=false;checkConn(false);}));
+/* options d'envoi : mémorisées sur l'appareil (elles sont maintenant dans un onglet à part) */
+const OPTS=['m-dup','m-homo','m-img','m-att'];
+function saveOpts(){const o={};OPTS.forEach(id=>{const e=$(id);o[id]=e.type==='checkbox'?e.checked:e.value;});store('rt-opts',o);}
+OPTS.forEach(id=>$(id).addEventListener('change',saveOpts));
 /* ---------- doublons ---------- */
 const J={'Content-Type':'application/json'};
 const rurl=slug=>'/api/recipes/'+encodeURIComponent(slug);
@@ -1552,7 +1648,7 @@ const OLD_API='\nCe point d’accès (/api/recipes/create/html-or-json) existe d
 $('send').onclick=async()=>{
   const r=recipe();
   if(!r.name.trim()){msg('m-msg','Donnez un titre à la recette.','err');$('f-name').focus();return;}
-  if(S.editing&&S.editing.web&&!S.editing.pick){msg('m-msg','Cette recette existe aussi sur le site : choisissez d’abord la version à importer (« Version à importer », section 2).','err');$('w-pick').focus();return;}
+  if(S.editing&&S.editing.web&&!S.editing.pick){msg('m-msg','Cette recette existe aussi sur le site : choisissez d’abord la version à importer (« Version à importer », sous la recette).','err');$('w-pick').focus();return;}
   $('send').disabled=true;msg('m-msg','Création de la recette…');
   try{
     let att=[];
@@ -1636,7 +1732,7 @@ function editItem(it){
     showPage(it.page).catch(()=>{});
     itemPhoto(it).then(b=>{if(S.editing===it&&b)setPhoto(b);}).catch(()=>{});
   }
-  $('rec-card').scrollIntoView({behavior:'smooth',block:'start'});
+  if(wide()) $('rec-card').scrollIntoView({behavior:'smooth',block:'start'}); else setTab('rec');
 }
 async function pageText(n){
   const method=$('method').value, ck=method+'|'+$('lang').value+'|'+n;
@@ -1672,7 +1768,7 @@ async function findToc(quiet){
   for(let n=1;n<=N&&!st;n++) if(kw[n]&&cnt[n]>=5) st=n;
   for(let n=1;n<=N&&!st;n++) if(cnt[n]>=5&&idx[n]) st=n;
   for(let n=1;n<=N&&!st;n++) if(cnt[n]>=12) st=n;
-  if(!st){msg('t-msg','Aucune table des matières repérée automatiquement. Indiquez ses pages à la main, ou décochez l’option.','warn');return;}
+  if(!st){msg('t-msg','Aucune table des matières repérée automatiquement. Indiquez ses pages à la main (ci-dessous), ou décochez l’option.','warn');$('adv-lot').open=true;return;}
   let en=st;while(en<N&&!stopPg[en+1]&&(cnt[en+1]>=5||(en+2<=N&&cnt[en+2]>=5&&!stopPg[en+2]))) en++;
   $('t-from').value=st;$('t-to').value=en;
   msg('t-msg','Table repérée : pages '+st+' à '+en+' du PDF. Corrigez au besoin avant d’analyser.','ok');
@@ -1719,7 +1815,7 @@ $('b-scan').onclick=async()=>{
     if($('t-use').checked){
       msg('b-msg','Lecture de la table des matières…');
       toc=await readToc();
-      if(!toc||toc.length<3){toc=null;msg('t-msg','Table des matières introuvable ou illisible aux pages indiquées : analyse sans table.','warn');}
+      if(!toc||toc.length<3){toc=null;msg('t-msg','Table des matières introuvable ou illisible aux pages indiquées : analyse sans table.','warn');$('adv-lot').open=true;}
     }
     let found=0;
     {
@@ -1915,8 +2011,43 @@ $('w-find').onclick=()=>findOnSite(false);
 $('b-site').addEventListener('change',()=>{S.siteIdx=null;saveBatch();});
 $('w-all').onchange=()=>{const v=$('w-all').value;if(!v)return;S.batch.forEach(i=>{if(i.web&&i.status!=='ok')i.pick=v;});$('w-all').value='';renderBatch();saveBatch();if(S.editing)showWeb(S.editing);};
 /* encadré « aussi sur le site » de la recette en cours de vérification */
+/* les deux versions côte à côte ; en couleur, les ingrédients sans équivalent dans l'autre version */
+function renderCmp(it){
+  const box=$('web-cmp');box.textContent='';
+  if(!it||!it.web){box.style.display='none';return;}
+  box.style.display='block';
+  const mk=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;};
+  const lines=v=>v.split('\n').map(x=>x.trim()).filter(Boolean), real=l=>l.filter(x=>!/^#\s/.test(x));
+  const B={ing:lines(fv('ing')),steps:lines(fv('steps')),yield:fv('yield').trim()}, W=WEB.ldToRec(it.web.ld);
+  // même ingrédient = au moins la moitié des mots en commun, sans compter les quantités ni les unités
+  const UNIT=new Set('kg mg ml cl dl lb oz tasse soupe the cafe table cuillere cuilleree pincee po cm environ'.split(' '));
+  const words=x=>WEB.tokens(x).filter(t=>!UNIT.has(t));
+  const same=(x,y)=>{const A=words(x),B=new Set(words(y));if(!A.length||!B.size)return false;return A.filter(t=>B.has(t)).length/Math.min(A.length,B.size)>=0.5;};
+  const list=(tag,rows,other)=>{
+    const l=mk(tag);let k=0;
+    for(const x of rows){
+      if(/^#\s/.test(x)){l.appendChild(mk('li','head',x.replace(/^#\s*/,'')));continue;}
+      const li=mk('li',other&&!other.some(o=>same(o,x))?'diff':'',x);
+      if(tag==='ol') li.value=++k;
+      l.appendChild(li);
+    }
+    return l;
+  };
+  const side=(title,r,other,on)=>{
+    const d=mk('div','side'+(on?' on':''));
+    d.append(mk('h3','',title+(on?' ✓':'')));
+    if(r.yield) d.append(mk('div','hint',r.yield));
+    d.append(mk('h4','','Ingrédients ('+real(r.ing).length+')'),list('ul',r.ing,real(other.ing)));
+    d.append(mk('h4','','Étapes ('+real(r.steps).length+')'),list('ol',r.steps,null));
+    return d;
+  };
+  const g=mk('div','cmp');
+  g.append(side('Livre',B,W,it.pick==='book'),side('Site web',W,B,it.pick==='web'));
+  box.append(g,mk('div','hint','En couleur : les ingrédients sans équivalent dans l’autre version.'));
+}
 function showWeb(it){
   const box=$('web-box');
+  renderCmp(it);
   if(!it){box.style.display='none';return;}
   box.style.display='block';$('w-man').open=false;
   const info=$('web-info'), w=it.web;info.textContent='';info.className='msg';
@@ -2165,7 +2296,7 @@ $('b-send').onclick=async()=>{
   const pdfItems=todo.filter(i=>!i.epub), wantImg=$('m-img').checked||$('m-att').value!=='none';
   if(pdfItems.length&&wantImg){
     const doc=S.pdf&&S.pdf.fingerprints?S.pdf.fingerprints[0]:null;
-    if(!S.pdf){msg('b-msg','Le PDF du livre n’est pas chargé (la liste a été restaurée après un rechargement de la page) : sans lui, ni photo ni page d’origine ne peuvent être jointes.\n→ Rechargez le PDF à la section 1, puis renvoyez. Les recettes déjà dans Mealie seront complétées, pas dupliquées.\n→ Ou désactivez la photo et les pièces jointes à la section 3.','err');return;}
+    if(!S.pdf){msg('b-msg','Le PDF du livre n’est pas chargé (la liste a été restaurée après un rechargement de la page) : sans lui, ni photo ni page d’origine ne peuvent être jointes.\n→ Rechargez le PDF (onglet Livre, « Source »), puis renvoyez. Les recettes déjà dans Mealie seront complétées, pas dupliquées.\n→ Ou désactivez la photo et les pièces jointes dans les Réglages.','err');return;}
     if(pdfItems.some(i=>i.doc&&doc&&i.doc!==doc)){msg('b-msg','Le PDF chargé n’est pas celui d’où vient cette liste : les photos et pages jointes seraient fausses. Chargez le bon PDF, ou videz la liste et relancez l’analyse.','err');return;}
   }
   S.busy=true;S.stop=false;$('b-send').disabled=true;$('b-stop').style.display='';S.index=null;
@@ -2225,6 +2356,9 @@ const d=store('rt-draft');if(d)F.forEach(k=>{if(d[k])setF(k,d[k]);});
 const ms=store('rt-mealie');if(ms){$('m-url').value=ms.url||'';$('m-token').value=ms.token||'';$('m-save').checked=true;}
 httpHint();
 if(VERSION) $('ver').textContent='Version '+VERSION;
+const so=store('rt-opts');if(so)OPTS.forEach(id=>{const e=$(id);if(!(id in so))return;if(e.type==='checkbox')e.checked=!!so[id];else if([...e.options].some(o=>o.value===so[id]))e.value=so[id];});
+// sans jeton, on commence par les Réglages
+if($('m-token').value.trim()) connState('wait','Mealie : vérification…'); else{connState('no','Mealie : jeton API à saisir — ouvrir les Réglages');setTab('set',false);}
 (async()=>{
   let sb=null;
   try{sb=await IDB.get('batch');}catch(e){}
@@ -2232,11 +2366,12 @@ if(VERSION) $('ver').textContent='Version '+VERSION;
   if(!sb||S.batch.length) return;
   $('b-book').value=sb.book||'';$('b-site').value=sb.site||'';
   S.batch=(sb.items||[]).map(i=>{if(i.status==='run')i.status='';return i;});renderBatch();
-  if(S.batch.some(i=>!i.epub&&i.status!=='ok')) msg('b-msg','Liste restaurée. Rechargez le PDF du livre (section 1) avant d’envoyer : il est nécessaire pour joindre les photos et les pages d’origine.','warn');
+  if(S.batch.some(i=>!i.epub&&i.status!=='ok')) msg('b-msg','Liste restaurée. Rechargez le PDF du livre (« Source ») avant d’envoyer : il est nécessaire pour joindre les photos et les pages d’origine.','warn');
 })();
 probeSame().then(ok=>{
-  if(ok) msg('m-msg','Mealie détecté derrière cette page (version '+S.mver+') : seul le jeton API est requis.','ok');
-  else if(S.relay!=='local') msg('m-msg',netHelp(''),'warn');
+  if(ok) msg('c-msg','Mealie détecté derrière cette page (version '+S.mver+') : seul le jeton API est requis.','ok');
+  else if(S.relay!=='local') msg('c-msg',netHelp(''),'warn');
+  if($('m-token').value.trim()) checkConn(false);
 });
 changed();
 })();
